@@ -3,7 +3,7 @@ import React from 'react'
 const App = () => {
   return (
     <div>
-      <h1>Hello, World!</h1>
+      <h1>welcome to toleti enterprises</h1>
     </div>
   )
 }
