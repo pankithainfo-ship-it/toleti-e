@@ -1,0 +1,21 @@
+[
+  {
+    "id": "QT-1792742712623-7d869600",
+    "customerName": "ankitha",
+    "email": "pankithainfo@gmail.com",
+    "phone": "8977118018",
+    "address": "dilsukhnagar hyd",
+    "quotationDate": "2026-10-23",
+    "validUntil": "2026-10-24",
+    "notes": "",
+    "items": [
+      {
+        "description": "dell",
+        "quantity": 2,
+        "unitPrice": 20000.02
+      }
+    ],
+    "total": 40000.04,
+    "createdAt": "2026-10-23T08:05:12.623Z"
+  }
+]
