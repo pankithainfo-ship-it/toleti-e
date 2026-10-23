@@ -1,13 +1,174 @@
 import { useState } from 'react'
 import './App.css'
+import credentials from './credentials.json'
+import Quotation from './components/Quotation.jsx'
+import PurchaseOrder from './components/PurchaseOrder.jsx'
+import Invoice from './components/Invoice.jsx'
+import DebitNote from './components/DebitNote.jsx'
+import CreditNote from './components/CreditNote.jsx'
+import DeliveryChallan from './components/DeliveryChallan.jsx'
+
+const services = [
+  {
+    name: 'Quotations',
+    icon: 'Q',
+    description: 'Prepare and keep track of customer quotations.',
+  },
+  {
+    name: 'Purchase Order',
+    icon: 'PO',
+    description: 'Organize purchase orders and supplier details.',
+  },
+  {
+    name: 'Invoice',
+    icon: 'IN',
+    description: 'Create and manage customer invoices.',
+  },
+  {
+    name: 'Debit Note',
+    icon: 'DN',
+    description: 'Record adjustments with debit notes.',
+  },
+  {
+    name: 'Credit Note',
+    icon: 'CN',
+    description: 'Record adjustments with credit notes.',
+  },
+  {
+    name: 'Delivery Challan',
+    icon: 'DC',
+    description: 'Track goods dispatched to your customers.',
+  },
+]
 
 function App() {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [activeService, setActiveService] = useState('Overview')
 
   function handleSubmit(event) {
     event.preventDefault()
-    setMessage('This sign-in form is a preview and is not connected to an account yet.')
+    const formData = new FormData(event.currentTarget)
+    const email = String(formData.get('email') || '').trim().toLowerCase()
+    const password = String(formData.get('password') || '')
+
+    if (email !== credentials.email.toLowerCase() || password !== credentials.password) {
+      setMessage('The email address or password is incorrect.')
+      return
+    }
+
+    setMessage('')
+    setActiveService('Overview')
+    setIsAuthenticated(true)
+  }
+
+  if (isAuthenticated) {
+    const selectedService = services.find((service) => service.name === activeService)
+
+    return (
+      <main className="dashboard-page">
+        <header className="dashboard-header">
+          <a className="dashboard-brand" href="/" aria-label="Toleti dashboard">
+            <span className="dashboard-brand-mark" aria-hidden="true">T</span>
+            <span>toleti<span className="dashboard-brand-dot">.</span></span>
+          </a>
+          <div className="dashboard-account">
+            <div className="account-details">
+              <span className="account-name">Administrator</span>
+              <span className="account-email">{credentials.email}</span>
+            </div>
+            <button className="sign-out-button" type="button" onClick={() => setIsAuthenticated(false)}>
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <div className="dashboard-layout">
+          <aside className="dashboard-sidebar" aria-label="Dashboard navigation">
+            <p className="sidebar-label">WORKSPACE</p>
+            <nav className="service-navigation" aria-label="Services">
+              <button
+                className={`navigation-item${activeService === 'Overview' ? ' is-active' : ''}`}
+                type="button"
+                aria-current={activeService === 'Overview' ? 'page' : undefined}
+                onClick={() => setActiveService('Overview')}
+              >
+                <span className="navigation-icon" aria-hidden="true">⌂</span>
+                <span>Overview</span>
+              </button>
+              {services.map((service) => (
+                <button
+                  className={`navigation-item${activeService === service.name ? ' is-active' : ''}`}
+                  key={service.name}
+                  type="button"
+                  aria-current={activeService === service.name ? 'page' : undefined}
+                  onClick={() => setActiveService(service.name)}
+                >
+                  <span className="navigation-icon service-navigation-icon" aria-hidden="true">{service.icon}</span>
+                  <span>{service.name}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="sidebar-note">
+              <span className="sidebar-note-mark" aria-hidden="true">✓</span>
+              <p>Your business workspace, all in one place.</p>
+            </div>
+          </aside>
+
+          <section className="dashboard-content" aria-live="polite">
+            {activeService === 'Quotations' ? (
+              <Quotation onBack={() => setActiveService('Overview')} />
+            ) : activeService === 'Purchase Order' ? (
+              <PurchaseOrder onBack={() => setActiveService('Overview')} />
+            ) : activeService === 'Invoice' ? (
+              <Invoice onBack={() => setActiveService('Overview')} />
+            ) : activeService === 'Debit Note' ? (
+              <DebitNote onBack={() => setActiveService('Overview')} />
+            ) : activeService === 'Credit Note' ? (
+              <CreditNote onBack={() => setActiveService('Overview')} />
+            ) : activeService === 'Delivery Challan' ? (
+              <DeliveryChallan onBack={() => setActiveService('Overview')} />
+            ) : selectedService ? (
+              <>
+                <p className="dashboard-eyebrow">DOCUMENTS</p>
+                <h1>{selectedService.name}</h1>
+                <p className="dashboard-description">{selectedService.description}</p>
+                <div className="empty-state">
+                  <span className="empty-state-icon" aria-hidden="true">{selectedService.icon}</span>
+                  <h2>Your {selectedService.name.toLowerCase()} will appear here</h2>
+                  <p>There are no {selectedService.name.toLowerCase()} to show yet.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="dashboard-eyebrow">TOLETI ENTERPRISES</p>
+                <h1>Good to see you, Administrator</h1>
+                <p className="dashboard-description">
+                  Manage your business documents from one convenient workspace.
+                </p>
+                <h2 className="services-heading">Your services</h2>
+                <div className="service-cards">
+                  {services.map((service) => (
+                    <button
+                      className="service-card"
+                      key={service.name}
+                      type="button"
+                      onClick={() => setActiveService(service.name)}
+                    >
+                      <span className="service-card-icon" aria-hidden="true">{service.icon}</span>
+                      <span className="service-card-title">{service.name}</span>
+                      <span className="service-card-description">{service.description}</span>
+                      <span className="service-card-link">Open service <span aria-hidden="true">→</span></span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+      </main>
+    )
   }
 
   return (
@@ -88,7 +249,7 @@ function App() {
 
             <div className="password-label-row">
               <label htmlFor="password">Password</label>
-              <button className="text-button" type="button" onClick={() => setMessage('Password reset is not available in this preview.')}>
+              <button className="text-button" type="button" onClick={() => setMessage('Please contact your administrator to reset your password.')}>
                 Forgot password?
               </button>
             </div>
@@ -124,7 +285,7 @@ function App() {
             <button className="submit-button" type="submit">
               Sign in <span aria-hidden="true">→</span>
             </button>
-            <p className="form-message" role="status">{message}</p>
+            <p className="form-message" role="status" aria-live="polite">{message}</p>
           </form>
 
           <p className="signup-prompt">
