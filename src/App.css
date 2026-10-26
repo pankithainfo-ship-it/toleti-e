@@ -1202,6 +1202,181 @@ a:focus-visible {
   font-size: 10px;
 }
 
+.quotation-details-toggle {
+  padding: 5px 10px;
+  border: 1px solid #dce8e1;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--dashboard-green);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quotation-details-toggle:hover {
+  background: #f3f8f5;
+}
+
+.quotation-record-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--dashboard-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.quotation-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.quotation-print-button {
+  padding: 8px 13px;
+  border: 1px solid var(--dashboard-green);
+  border-radius: 6px;
+  background: var(--dashboard-green);
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quotation-edit-button,
+.quotation-delete-button {
+  padding: 8px 13px;
+  border: 1px solid #dce8e1;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--dashboard-green);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quotation-edit-button:hover:not(:disabled) {
+  background: #f3f8f5;
+}
+
+.quotation-delete-button {
+  border-color: #ecd4d1;
+  color: #a33f38;
+}
+
+.quotation-delete-button:hover:not(:disabled) {
+  background: #fff5f3;
+}
+
+.quotation-edit-button:disabled,
+.quotation-delete-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.quotation-print-button:hover {
+  background: #105446;
+}
+
+.quotation-record-details {
+  display: grid;
+  gap: 18px;
+  padding: 8px 4px;
+  white-space: normal;
+}
+
+.quotation-record-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 20px;
+  margin: 0;
+}
+
+.quotation-record-grid > div {
+  min-width: 0;
+}
+
+.quotation-record-grid dt {
+  margin-bottom: 4px;
+  color: var(--dashboard-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.quotation-record-grid dd {
+  margin: 0;
+  color: var(--dashboard-ink);
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.quotation-record-items-wrap {
+  overflow-x: auto;
+}
+
+.quotation-record-items {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.quotation-record-items th,
+.quotation-record-items td {
+  padding: 9px 10px;
+  border: 1px solid #edf1ee;
+  font-size: 11px;
+}
+
+.quotation-record-items th {
+  background: #f8faf8;
+  color: #65736c;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.quotation-record-totals {
+  width: min(100%, 360px);
+  justify-self: end;
+  display: grid;
+  gap: 8px;
+}
+
+.quotation-record-totals p {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  color: #65736c;
+  font-size: 11px;
+}
+
+.quotation-record-totals .quotation-record-amount-words {
+  display: block;
+  padding-top: 8px;
+  border-top: 1px solid #edf1ee;
+  line-height: 1.5;
+}
+
+.quotation-record-notes {
+  margin: 0;
+  color: #65736c;
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+
+.quotation-print-document {
+  display: none;
+}
+
 .quotation-modal-backdrop {
   position: fixed;
   z-index: 10;
@@ -1214,7 +1389,7 @@ a:focus-visible {
 }
 
 .quotation-modal {
-  width: min(100%, 760px);
+  width: min(100%, 960px);
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
@@ -1340,16 +1515,79 @@ a:focus-visible {
   margin-top: 22px;
 }
 
+.purchase-order-terms-fieldset {
+  margin-top: 22px;
+}
+
+.invoice-terms-fieldset {
+  margin-top: 22px;
+}
+
+.debit-note-terms-fieldset {
+  margin-top: 22px;
+}
+
+.credit-note-tax-fieldset {
+  margin-top: 22px;
+}
+
+.quotation-terms-fieldset {
+  margin-top: 22px;
+}
+
 .quotation-items {
   display: grid;
   gap: 12px;
+  overflow-x: auto;
 }
 
 .quotation-item-row {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 90px 140px 32px;
+  min-width: 760px;
+  grid-template-columns: minmax(180px, 2fr) minmax(75px, 0.8fr) minmax(100px, 1fr) 72px 105px minmax(110px, 1fr) 32px;
   align-items: end;
   gap: 10px;
+}
+
+.purchase-order-item-row {
+  grid-template-columns: minmax(180px, 2fr) minmax(75px, 0.8fr) minmax(90px, 1fr) 72px 105px minmax(110px, 1fr) 32px;
+}
+
+.invoice-item-row {
+  grid-template-columns: minmax(180px, 2fr) minmax(75px, 0.8fr) minmax(90px, 1fr) minmax(90px, 1fr) 72px 105px minmax(110px, 1fr) 32px;
+}
+
+.debit-note-item-row {
+  grid-template-columns: minmax(180px, 2fr) minmax(75px, 0.8fr) minmax(90px, 1fr) 72px 105px minmax(110px, 1fr) 32px;
+}
+
+.credit-note-item-row {
+  grid-template-columns: minmax(180px, 2fr) minmax(90px, 1fr) minmax(75px, 0.8fr) 72px 105px minmax(110px, 1fr) 32px;
+}
+
+.delivery-challan-goods-row {
+  grid-template-columns: minmax(180px, 2fr) minmax(85px, 1fr) minmax(75px, 0.8fr) minmax(85px, 1fr) 72px 105px minmax(110px, 1fr) 32px;
+}
+
+.quotation-item-amount {
+  min-width: 0;
+  min-height: 39px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  overflow: hidden;
+  color: #45544e;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.quotation-item-amount strong {
+  overflow: hidden;
+  color: var(--dashboard-ink);
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .quotation-item-quantity input,
@@ -1398,6 +1636,41 @@ a:focus-visible {
 .quotation-form-total strong {
   color: var(--dashboard-ink);
   font-size: 15px;
+}
+
+.quotation-total-breakdown {
+  display: grid;
+  justify-content: end;
+  gap: 8px;
+  margin-top: 17px;
+  padding: 14px 0;
+  border-top: 1px solid #edf1ee;
+}
+
+.quotation-total-breakdown > p {
+  display: flex;
+  justify-content: space-between;
+  gap: 36px;
+  margin: 0;
+  color: #65736c;
+  font-size: 12px;
+}
+
+.quotation-total-breakdown > p strong {
+  color: var(--dashboard-ink);
+  font-weight: 600;
+}
+
+.quotation-total-breakdown > .quotation-grand-total {
+  padding-top: 9px;
+  border-top: 1px solid #edf1ee;
+  color: var(--dashboard-ink);
+  font-weight: 700;
+}
+
+.quotation-total-words {
+  width: min(100%, 460px);
+  margin-top: 5px;
 }
 
 .quotation-form-actions {
@@ -1486,8 +1759,37 @@ a:focus-visible {
   }
 
   .quotation-item-row {
-    grid-template-columns: minmax(0, 1fr) 72px 105px 30px;
+    min-width: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
+  }
+
+  .quotation-item-description {
+    grid-column: 1 / -1;
+  }
+
+  .purchase-order-item-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .invoice-item-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .debit-note-item-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .credit-note-item-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .delivery-challan-goods-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quotation-item-amount {
+    min-height: 39px;
   }
 
   .delivery-challan-item-row {
@@ -1498,7 +1800,7 @@ a:focus-visible {
 
 @media (max-width: 440px) {
   .quotation-item-row {
-    grid-template-columns: minmax(0, 1fr) 66px 94px 28px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 
@@ -1531,7 +1833,277 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .quotation-record-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .quotation-field-full {
     grid-column: auto;
+  }
+}
+
+@media (max-width: 440px) {
+  .quotation-record-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quotation-record-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .quotation-record-actions {
+    justify-content: flex-start;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    background: #fff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #quotation-print-document,
+  #quotation-print-document * {
+    visibility: visible !important;
+  }
+
+  #quotation-print-document {
+    position: fixed;
+    inset: 0 auto auto 0;
+    z-index: 99999;
+    display: block !important;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #fff;
+    color: #111;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9pt;
+    line-height: 1.35;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .quotation-print-company {
+    display: grid;
+    grid-template-columns: 25mm 1fr;
+    align-items: center;
+    gap: 5mm;
+    padding: 0 0 3mm;
+    border-bottom: 1.2mm solid #a82b32;
+    text-align: center;
+  }
+
+  .quotation-print-brand-mark {
+    width: 21mm;
+    height: 21mm;
+    display: grid;
+    place-items: center;
+    border: 1px solid #34765d;
+    border-radius: 50%;
+    color: #176b59;
+    font-size: 19pt;
+    font-weight: 800;
+  }
+
+  .quotation-print-company h1 {
+    margin: 0 0 1mm;
+    font-size: 18pt;
+    line-height: 1.1;
+  }
+
+  .quotation-print-company p {
+    margin: 0.6mm 0;
+    font-size: 7.5pt;
+  }
+
+  .quotation-print-title {
+    margin: 3mm 0;
+    font-size: 12pt;
+    text-align: center;
+    text-decoration: underline;
+  }
+
+  .quotation-print-parties {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 0.4mm solid #111;
+    break-inside: avoid;
+  }
+
+  .quotation-print-bill-to {
+    min-height: 35mm;
+    padding: 3mm;
+    border-right: 0.4mm solid #111;
+  }
+
+  .quotation-print-bill-to > strong {
+    display: block;
+    margin-bottom: 1.5mm;
+  }
+
+  .quotation-print-bill-to p {
+    margin: 1mm 0;
+    white-space: pre-line;
+  }
+
+  .quotation-print-parties dl {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: start;
+    gap: 1.5mm;
+    margin: 0;
+    padding: 3mm;
+  }
+
+  .quotation-print-parties dl > div {
+    display: grid;
+    grid-template-columns: 34mm 1fr;
+    gap: 2mm;
+  }
+
+  .quotation-print-parties dt {
+    font-weight: 700;
+  }
+
+  .quotation-print-parties dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .quotation-print-reference {
+    margin: 3mm 0;
+    font-size: 8pt;
+  }
+
+  .quotation-print-items,
+  .quotation-print-totals {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .quotation-print-items {
+    margin-top: 4mm;
+    table-layout: fixed;
+  }
+
+  .quotation-print-items th,
+  .quotation-print-items td,
+  .quotation-print-totals th,
+  .quotation-print-totals td {
+    padding: 2mm 1.5mm;
+    border: 0.35mm solid #111;
+    vertical-align: top;
+  }
+
+  .quotation-print-items th {
+    background: #edf8e9 !important;
+    text-align: center;
+  }
+
+  .quotation-print-items th:nth-child(1) { width: 8%; }
+  .quotation-print-items th:nth-child(2) { width: 33%; }
+  .quotation-print-items th:nth-child(3) { width: 12%; }
+  .quotation-print-items th:nth-child(4) { width: 14%; }
+  .quotation-print-items th:nth-child(5) { width: 7%; }
+  .quotation-print-items th:nth-child(6) { width: 12%; }
+  .quotation-print-items th:nth-child(7) { width: 14%; }
+
+  .quotation-print-items td:nth-child(1),
+  .quotation-print-items td:nth-child(3),
+  .quotation-print-items td:nth-child(5) {
+    text-align: center;
+  }
+
+  .quotation-print-items td:nth-child(6),
+  .quotation-print-items td:nth-child(7) {
+    text-align: right;
+  }
+
+  .quotation-print-items tr,
+  .quotation-print-bottom,
+  .quotation-print-words,
+  .quotation-print-signature {
+    break-inside: avoid;
+  }
+
+  .quotation-print-bottom {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    margin-top: 0;
+    border: 0.35mm solid #111;
+    border-top: 0;
+  }
+
+  .quotation-print-terms {
+    padding: 3mm;
+    border-right: 0.35mm solid #111;
+  }
+
+  .quotation-print-terms > strong {
+    display: block;
+    margin-bottom: 1.5mm;
+  }
+
+  .quotation-print-terms p {
+    margin: 1mm 0;
+    white-space: pre-line;
+  }
+
+  .quotation-print-notes {
+    margin-top: 2mm !important;
+  }
+
+  .quotation-print-totals th {
+    font-weight: 600;
+    text-align: right;
+  }
+
+  .quotation-print-totals td {
+    width: 35%;
+    text-align: right;
+  }
+
+  .quotation-print-totals .quotation-print-grand-total {
+    font-size: 11pt;
+    font-weight: 800;
+  }
+
+  .quotation-print-words {
+    margin: 0;
+    padding: 3mm;
+    border: 0.35mm solid #111;
+    border-top: 0;
+  }
+
+  .quotation-print-signature {
+    min-height: 32mm;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 4mm;
+    border: 0.35mm solid #111;
+    border-top: 0;
+  }
+
+  .quotation-print-signature-space {
+    flex: 1;
+    min-height: 16mm;
   }
 }

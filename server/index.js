@@ -63,6 +63,17 @@ function validateQuotation(value) {
   if (value.validUntil && value.validUntil < value.quotationDate) {
     return 'The valid-until date cannot be earlier than the quotation date.'
   }
+  if (value.enquiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(value.enquiryDate)) {
+    return 'Enter a valid enquiry date.'
+  }
+  if (
+    (value.packingChargeRate !== undefined
+      && (!Number.isFinite(value.packingChargeRate) || value.packingChargeRate < 0))
+    || (value.gstRate !== undefined
+      && (!Number.isFinite(value.gstRate) || value.gstRate < 0))
+  ) {
+    return 'P&F and GST rates must be valid non-negative numbers.'
+  }
   if (!Array.isArray(value.items) || value.items.length === 0) {
     return 'At least one quotation item is required.'
   }
@@ -103,6 +114,17 @@ function validatePurchaseOrder(value) {
   }
   if (value.expectedDelivery && value.expectedDelivery < value.orderDate) {
     return 'The expected delivery date cannot be earlier than the order date.'
+  }
+  if (value.offerDate && !/^\d{4}-\d{2}-\d{2}$/.test(value.offerDate)) {
+    return 'Enter a valid offer date.'
+  }
+  if (
+    (value.packingChargeRate !== undefined
+      && (!Number.isFinite(value.packingChargeRate) || value.packingChargeRate < 0))
+    || (value.gstRate !== undefined
+      && (!Number.isFinite(value.gstRate) || value.gstRate < 0))
+  ) {
+    return 'P&F and IGST rates must be valid non-negative numbers.'
   }
   if (!Array.isArray(value.items) || value.items.length === 0) {
     return 'At least one purchase order item is required.'
@@ -145,6 +167,19 @@ function validateInvoice(value) {
   if (value.dueDate && value.dueDate < value.invoiceDate) {
     return 'The due date cannot be earlier than the invoice date.'
   }
+  if (
+    (value.purchaseOrderDate && !/^\d{4}-\d{2}-\d{2}$/.test(value.purchaseOrderDate))
+    || (value.purchaseOrderReceivedDate && !/^\d{4}-\d{2}-\d{2}$/.test(value.purchaseOrderReceivedDate))
+  ) {
+    return 'Enter valid purchase order dates.'
+  }
+  if (
+    ['packingChargeRate', 'cgstRate', 'sgstRate', 'courierCharges'].some((field) => (
+      value[field] !== undefined && (!Number.isFinite(value[field]) || value[field] < 0)
+    ))
+  ) {
+    return 'P&F, tax rates, and courier charges must be valid non-negative numbers.'
+  }
   if (!Array.isArray(value.items) || value.items.length === 0) {
     return 'At least one invoice item is required.'
   }
@@ -180,6 +215,20 @@ function validateDebitNote(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value.noteDate || '')) {
     return 'A valid debit note date is required.'
   }
+  if (
+    ['purchaseOrderDate', 'invoiceDate', 'creditNoteDate', 'deliveryChallanDate'].some((field) => (
+      value[field] && !/^\d{4}-\d{2}-\d{2}$/.test(value[field])
+    ))
+  ) {
+    return 'Enter valid reference document dates.'
+  }
+  if (
+    ['packingChargeRate', 'gstRate'].some((field) => (
+      value[field] !== undefined && (!Number.isFinite(value[field]) || value[field] < 0)
+    ))
+  ) {
+    return 'P&F and IGST rates must be valid non-negative numbers.'
+  }
   if (!Array.isArray(value.items) || value.items.length === 0) {
     return 'At least one debit note item is required.'
   }
@@ -214,6 +263,20 @@ function validateCreditNote(value) {
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value.noteDate || '')) {
     return 'A valid credit note date is required.'
+  }
+  if (
+    ['purchaseOrderDate', 'invoiceDate', 'deliveryChallanDate'].some((field) => (
+      value[field] && !/^\d{4}-\d{2}-\d{2}$/.test(value[field])
+    ))
+  ) {
+    return 'Enter valid reference document dates.'
+  }
+  if (
+    ['cgstRate', 'sgstRate'].some((field) => (
+      value[field] !== undefined && (!Number.isFinite(value[field]) || value[field] < 0)
+    ))
+  ) {
+    return 'CGST and SGST rates must be valid non-negative numbers.'
   }
   if (!Array.isArray(value.items) || value.items.length === 0) {
     return 'At least one credit note item is required.'
@@ -276,6 +339,9 @@ function validateDeliveryChallan(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value.dispatchDate || '')) {
     return 'A valid dispatch date is required.'
   }
+  if (value.purchaseOrderDate && !/^\d{4}-\d{2}-\d{2}$/.test(value.purchaseOrderDate)) {
+    return 'Enter a valid purchase order date.'
+  }
   if (!Array.isArray(value.items) || value.items.length === 0) {
     return 'At least one delivery challan item is required.'
   }
@@ -287,8 +353,9 @@ function validateDeliveryChallan(value) {
       || !item.description.trim()
       || !Number.isFinite(item.quantity)
       || item.quantity <= 0
+      || (item.rate !== undefined && (!Number.isFinite(item.rate) || item.rate < 0))
     ) {
-      return 'Each item must have a description and positive quantity.'
+      return 'Each item must have a description, positive quantity, and valid rate.'
     }
   }
 
@@ -425,13 +492,20 @@ async function readQuotationFile() {
   }
 }
 
-async function saveQuotation(value) {
-  const id = `QT-${Date.now()}-${randomUUID().slice(0, 8)}`
+function createQuotationRecord(value, id, createdAt) {
   const items = value.items.map((item) => ({
     description: item.description.trim(),
+    hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
+    make: typeof item.make === 'string' ? item.make.trim() : '',
     quantity: item.quantity,
     unitPrice: item.unitPrice,
+    amount: Math.round(item.quantity * item.unitPrice * 100) / 100,
   }))
+  const subtotal = Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100
+  const packingChargeRate = value.packingChargeRate ?? 0
+  const gstRate = value.gstRate ?? 0
+  const packingCharge = Math.round(subtotal * packingChargeRate) / 100
+  const gstAmount = Math.round((subtotal + packingCharge) * gstRate) / 100
   const quotation = {
     id,
     customerName: value.customerName.trim(),
@@ -440,23 +514,89 @@ async function saveQuotation(value) {
     address: typeof value.address === 'string' ? value.address.trim() : '',
     quotationDate: value.quotationDate,
     validUntil: value.validUntil || '',
+    enquiryDate: value.enquiryDate || '',
+    enquiryReference: typeof value.enquiryReference === 'string' ? value.enquiryReference.trim() : '',
+    attention: typeof value.attention === 'string' ? value.attention.trim() : '',
+    region: typeof value.region === 'string' ? value.region.trim() : '',
+    freight: typeof value.freight === 'string' ? value.freight.trim() : '',
+    deliveryTerms: typeof value.deliveryTerms === 'string' ? value.deliveryTerms.trim() : '',
+    paymentTerms: typeof value.paymentTerms === 'string' ? value.paymentTerms.trim() : '',
+    validityTerms: typeof value.validityTerms === 'string' ? value.validityTerms.trim() : '',
+    freightTerms: typeof value.freightTerms === 'string' ? value.freightTerms.trim() : '',
+    packingChargeRate,
+    packingCharge,
+    gstRate,
+    gstAmount,
+    subtotal,
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
-    total: items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
-    createdAt: new Date().toISOString(),
+    total: Math.round((subtotal + packingCharge + gstAmount) * 100) / 100,
+    createdAt,
   }
+  return quotation
+}
 
+async function writeQuotations(quotations) {
+  const temporaryPath = `${quotationFilePath}.${randomUUID()}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(quotations, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
+  await rename(temporaryPath, quotationFilePath)
+}
+
+async function saveQuotation(value) {
+  const id = `QT-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const quotation = createQuotationRecord(value, id, new Date().toISOString())
   const saveOperation = writeQueue.then(async () => {
     const quotations = await readQuotationFile()
-    const updatedQuotations = [quotation, ...quotations]
-    const temporaryPath = `${quotationFilePath}.${randomUUID()}.tmp`
-
-    await writeFile(temporaryPath, `${JSON.stringify(updatedQuotations, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    })
-    await rename(temporaryPath, quotationFilePath)
+    await writeQuotations([quotation, ...quotations])
     return quotation
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function updateQuotation(id, value) {
+  const saveOperation = writeQueue.then(async () => {
+    const quotations = await readQuotationFile()
+    const quotationIndex = quotations.findIndex((quotation) => quotation.id === id)
+    if (quotationIndex === -1) {
+      const error = new Error('Quotation not found.')
+      error.status = 404
+      throw error
+    }
+
+    const existingQuotation = quotations[quotationIndex]
+    const updatedQuotation = createQuotationRecord(
+      value,
+      existingQuotation.id,
+      existingQuotation.createdAt || new Date().toISOString(),
+    )
+    const updatedQuotations = [...quotations]
+    updatedQuotations[quotationIndex] = updatedQuotation
+    await writeQuotations(updatedQuotations)
+    return updatedQuotation
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function deleteQuotation(id) {
+  const saveOperation = writeQueue.then(async () => {
+    const quotations = await readQuotationFile()
+    const quotationIndex = quotations.findIndex((quotation) => quotation.id === id)
+    if (quotationIndex === -1) {
+      const error = new Error('Quotation not found.')
+      error.status = 404
+      throw error
+    }
+
+    const [deletedQuotation] = quotations.splice(quotationIndex, 1)
+    await writeQuotations(quotations)
+    return deletedQuotation
   })
 
   writeQueue = saveOperation.then(() => undefined, () => undefined)
@@ -467,9 +607,17 @@ async function savePurchaseOrder(value) {
   const id = `PO-${Date.now()}-${randomUUID().slice(0, 8)}`
   const items = value.items.map((item) => ({
     description: item.description.trim(),
+    hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
+    productCode: typeof item.productCode === 'string' ? item.productCode.trim() : '',
     quantity: item.quantity,
     unitPrice: item.unitPrice,
+    amount: Math.round(item.quantity * item.unitPrice * 100) / 100,
   }))
+  const subtotal = Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100
+  const packingChargeRate = value.packingChargeRate ?? 0
+  const gstRate = value.gstRate ?? 0
+  const packingCharge = Math.round(subtotal * packingChargeRate) / 100
+  const gstAmount = Math.round((subtotal + packingCharge) * gstRate) / 100
   const purchaseOrder = {
     id,
     supplierName: value.supplierName.trim(),
@@ -478,9 +626,22 @@ async function savePurchaseOrder(value) {
     address: typeof value.address === 'string' ? value.address.trim() : '',
     orderDate: value.orderDate,
     expectedDelivery: value.expectedDelivery || '',
+    offerNumber: typeof value.offerNumber === 'string' ? value.offerNumber.trim() : '',
+    offerDate: value.offerDate || '',
+    dispatchMode: typeof value.dispatchMode === 'string' ? value.dispatchMode.trim() : '',
+    gstNumber: typeof value.gstNumber === 'string' ? value.gstNumber.trim() : '',
+    panNumber: typeof value.panNumber === 'string' ? value.panNumber.trim() : '',
+    freightTerms: typeof value.freightTerms === 'string' ? value.freightTerms.trim() : '',
+    paymentTerms: typeof value.paymentTerms === 'string' ? value.paymentTerms.trim() : '',
+    discountTerms: typeof value.discountTerms === 'string' ? value.discountTerms.trim() : '',
+    packingChargeRate,
+    packingCharge,
+    gstRate,
+    gstAmount,
+    subtotal,
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
-    total: items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    total: Math.round((subtotal + packingCharge + gstAmount) * 100) / 100,
     createdAt: new Date().toISOString(),
   }
 
@@ -510,20 +671,59 @@ async function saveInvoice(value) {
   const id = `INV-${Date.now()}-${randomUUID().slice(0, 8)}`
   const items = value.items.map((item) => ({
     description: item.description.trim(),
+    hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
+    productCode: typeof item.productCode === 'string' ? item.productCode.trim() : '',
+    make: typeof item.make === 'string' ? item.make.trim() : '',
     quantity: item.quantity,
     unitPrice: item.unitPrice,
+    amount: Math.round(item.quantity * item.unitPrice * 100) / 100,
   }))
+  const itemSubtotal = Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100
+  const packingChargeRate = value.packingChargeRate ?? 0
+  const packingCharge = Math.round(itemSubtotal * packingChargeRate) / 100
+  const courierCharges = value.courierCharges ?? 0
+  const subtotal = Math.round((itemSubtotal + packingCharge + courierCharges) * 100) / 100
+  const cgstRate = value.cgstRate ?? 0
+  const sgstRate = value.sgstRate ?? 0
+  const cgstAmount = Math.round(subtotal * cgstRate) / 100
+  const sgstAmount = Math.round(subtotal * sgstRate) / 100
   const invoice = {
     id,
     customerName: value.customerName.trim(),
     email: typeof value.email === 'string' ? value.email.trim() : '',
     phone: typeof value.phone === 'string' ? value.phone.trim() : '',
+    contactNumber: typeof value.contactNumber === 'string' ? value.contactNumber.trim() : '',
     address: typeof value.address === 'string' ? value.address.trim() : '',
+    deliveryAddress: typeof value.deliveryAddress === 'string' ? value.deliveryAddress.trim() : '',
     invoiceDate: value.invoiceDate,
     dueDate: value.dueDate || '',
+    purchaseOrderNumber: typeof value.purchaseOrderNumber === 'string' ? value.purchaseOrderNumber.trim() : '',
+    purchaseOrderDate: value.purchaseOrderDate || '',
+    purchaseOrderReceivedDate: value.purchaseOrderReceivedDate || '',
+    freight: typeof value.freight === 'string' ? value.freight.trim() : '',
+    paymentTerms: typeof value.paymentTerms === 'string' ? value.paymentTerms.trim() : '',
+    modeOfDocuments: typeof value.modeOfDocuments === 'string' ? value.modeOfDocuments.trim() : '',
+    region: typeof value.region === 'string' ? value.region.trim() : '',
+    numberOfPackages: typeof value.numberOfPackages === 'string' ? value.numberOfPackages.trim() : '',
+    placeOfSupply: typeof value.placeOfSupply === 'string' ? value.placeOfSupply.trim() : '',
+    wayBillNumber: typeof value.wayBillNumber === 'string' ? value.wayBillNumber.trim() : '',
+    contactPerson: typeof value.contactPerson === 'string' ? value.contactPerson.trim() : '',
+    dispatchThrough: typeof value.dispatchThrough === 'string' ? value.dispatchThrough.trim() : '',
+    courierDwbNumber: typeof value.courierDwbNumber === 'string' ? value.courierDwbNumber.trim() : '',
+    gstNumber: typeof value.gstNumber === 'string' ? value.gstNumber.trim() : '',
+    deliveryGstNumber: typeof value.deliveryGstNumber === 'string' ? value.deliveryGstNumber.trim() : '',
+    packingChargeRate,
+    packingCharge,
+    courierCharges,
+    cgstRate,
+    cgstAmount,
+    sgstRate,
+    sgstAmount,
+    itemSubtotal,
+    subtotal,
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
-    total: items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
+    total: Math.round((subtotal + cgstAmount + sgstAmount) * 100) / 100,
     createdAt: new Date().toISOString(),
   }
 
@@ -553,21 +753,47 @@ async function saveDebitNote(value) {
   const id = `DN-${Date.now()}-${randomUUID().slice(0, 8)}`
   const items = value.items.map((item) => ({
     description: item.description.trim(),
+    hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
+    productCode: typeof item.productCode === 'string' ? item.productCode.trim() : '',
     quantity: item.quantity,
     amount: item.amount,
+    total: Math.round(item.quantity * item.amount * 100) / 100,
   }))
+  const itemSubtotal = Math.round(items.reduce((sum, item) => sum + item.total, 0) * 100) / 100
+  const packingChargeRate = value.packingChargeRate ?? 0
+  const packingCharge = Math.round(itemSubtotal * packingChargeRate) / 100
+  const subtotal = Math.round((itemSubtotal + packingCharge) * 100) / 100
+  const gstRate = value.gstRate ?? 0
+  const gstAmount = Math.round(subtotal * gstRate) / 100
   const debitNote = {
     id,
     customerName: value.customerName.trim(),
     email: typeof value.email === 'string' ? value.email.trim() : '',
     phone: typeof value.phone === 'string' ? value.phone.trim() : '',
+    customerGstNumber: typeof value.customerGstNumber === 'string' ? value.customerGstNumber.trim() : '',
     address: typeof value.address === 'string' ? value.address.trim() : '',
     noteDate: value.noteDate,
+    purchaseOrderNumber: typeof value.purchaseOrderNumber === 'string' ? value.purchaseOrderNumber.trim() : '',
+    purchaseOrderDate: value.purchaseOrderDate || '',
+    invoiceNumber: typeof value.invoiceNumber === 'string' ? value.invoiceNumber.trim() : '',
+    invoiceDate: value.invoiceDate || '',
+    creditNoteType: typeof value.creditNoteType === 'string' ? value.creditNoteType.trim() : '',
+    creditNoteNumber: typeof value.creditNoteNumber === 'string' ? value.creditNoteNumber.trim() : '',
+    creditNoteDate: value.creditNoteDate || '',
+    deliveryChallanNumber: typeof value.deliveryChallanNumber === 'string' ? value.deliveryChallanNumber.trim() : '',
+    deliveryChallanDate: value.deliveryChallanDate || '',
     reference: typeof value.reference === 'string' ? value.reference.trim() : '',
     reason: typeof value.reason === 'string' ? value.reason.trim() : '',
+    packingChargeRate,
+    packingCharge,
+    gstRate,
+    gstAmount,
+    itemSubtotal,
+    subtotal,
+    comments: typeof value.comments === 'string' ? value.comments.trim() : '',
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
-    total: items.reduce((sum, item) => sum + item.quantity * item.amount, 0),
+    total: Math.round((subtotal + gstAmount) * 100) / 100,
     createdAt: new Date().toISOString(),
   }
 
@@ -592,21 +818,43 @@ async function saveCreditNote(value) {
   const id = `CN-${Date.now()}-${randomUUID().slice(0, 8)}`
   const items = value.items.map((item) => ({
     description: item.description.trim(),
+    productCode: typeof item.productCode === 'string' ? item.productCode.trim() : '',
+    hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
     quantity: item.quantity,
     amount: item.amount,
+    total: Math.round(item.quantity * item.amount * 100) / 100,
   }))
+  const subtotal = Math.round(items.reduce((sum, item) => sum + item.total, 0) * 100) / 100
+  const cgstRate = value.cgstRate ?? 0
+  const sgstRate = value.sgstRate ?? 0
+  const cgstAmount = Math.round(subtotal * cgstRate) / 100
+  const sgstAmount = Math.round(subtotal * sgstRate) / 100
   const creditNote = {
     id,
     customerName: value.customerName.trim(),
     email: typeof value.email === 'string' ? value.email.trim() : '',
     phone: typeof value.phone === 'string' ? value.phone.trim() : '',
+    customerGstNumber: typeof value.customerGstNumber === 'string' ? value.customerGstNumber.trim() : '',
     address: typeof value.address === 'string' ? value.address.trim() : '',
     noteDate: value.noteDate,
+    purchaseOrderNumber: typeof value.purchaseOrderNumber === 'string' ? value.purchaseOrderNumber.trim() : '',
+    purchaseOrderDate: value.purchaseOrderDate || '',
+    invoiceNumber: typeof value.invoiceNumber === 'string' ? value.invoiceNumber.trim() : '',
+    invoiceDate: value.invoiceDate || '',
+    creditNoteType: typeof value.creditNoteType === 'string' ? value.creditNoteType.trim() : '',
+    deliveryChallanNumber: typeof value.deliveryChallanNumber === 'string' ? value.deliveryChallanNumber.trim() : '',
+    deliveryChallanDate: value.deliveryChallanDate || '',
     reference: typeof value.reference === 'string' ? value.reference.trim() : '',
     reason: typeof value.reason === 'string' ? value.reason.trim() : '',
+    cgstRate,
+    cgstAmount,
+    sgstRate,
+    sgstAmount,
+    subtotal,
+    comments: typeof value.comments === 'string' ? value.comments.trim() : '',
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
-    total: items.reduce((sum, item) => sum + item.quantity * item.amount, 0),
+    total: Math.round((subtotal + cgstAmount + sgstAmount) * 100) / 100,
     createdAt: new Date().toISOString(),
   }
 
@@ -631,21 +879,38 @@ async function saveDeliveryChallan(value) {
   const id = `DC-${Date.now()}-${randomUUID().slice(0, 8)}`
   const items = value.items.map((item) => ({
     description: item.description.trim(),
+    hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
+    productCode: typeof item.productCode === 'string' ? item.productCode.trim() : '',
+    make: typeof item.make === 'string' ? item.make.trim() : '',
     quantity: item.quantity,
+    rate: item.rate ?? 0,
+    amount: Math.round(item.quantity * (item.rate ?? 0) * 100) / 100,
   }))
   const challan = {
     id,
     customerName: value.customerName.trim(),
     email: typeof value.email === 'string' ? value.email.trim() : '',
     phone: typeof value.phone === 'string' ? value.phone.trim() : '',
+    customerGstNumber: typeof value.customerGstNumber === 'string' ? value.customerGstNumber.trim() : '',
+    customerPanNumber: typeof value.customerPanNumber === 'string' ? value.customerPanNumber.trim() : '',
+    billingAddress: typeof value.billingAddress === 'string' ? value.billingAddress.trim() : '',
     deliveryAddress: value.deliveryAddress.trim(),
     dispatchDate: value.dispatchDate,
+    invoiceNumber: typeof value.invoiceNumber === 'string' ? value.invoiceNumber.trim() : '',
+    purchaseOrderNumber: typeof value.purchaseOrderNumber === 'string' ? value.purchaseOrderNumber.trim() : '',
+    purchaseOrderDate: value.purchaseOrderDate || '',
+    paymentTerms: typeof value.paymentTerms === 'string' ? value.paymentTerms.trim() : '',
+    regionCode: typeof value.regionCode === 'string' ? value.regionCode.trim() : '',
+    numberOfPackages: typeof value.numberOfPackages === 'string' ? value.numberOfPackages.trim() : '',
+    contactPerson: typeof value.contactPerson === 'string' ? value.contactPerson.trim() : '',
     reference: typeof value.reference === 'string' ? value.reference.trim() : '',
     transporter: typeof value.transporter === 'string' ? value.transporter.trim() : '',
+    dispatchThrough: typeof value.dispatchThrough === 'string' ? value.dispatchThrough.trim() : '',
     vehicleNumber: typeof value.vehicleNumber === 'string' ? value.vehicleNumber.trim() : '',
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
     totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
+    totalAmount: Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100,
     createdAt: new Date().toISOString(),
   }
 
@@ -689,9 +954,11 @@ async function listDeliveryChallans() {
 export function createApiServer() {
   return createServer(async (request, response) => {
     const pathname = new URL(request.url || '/', 'http://localhost').pathname
+    const isQuotationRoute = pathname === '/api/quotations' || pathname.startsWith('/api/quotations/')
+    const quotationIdMatch = pathname.match(/^\/api\/quotations\/([^/]+)$/)
 
     if (
-      pathname !== '/api/quotations'
+      !isQuotationRoute
       && pathname !== '/api/purchase-orders'
       && pathname !== '/api/invoices'
       && pathname !== '/api/debit-notes'
@@ -703,6 +970,43 @@ export function createApiServer() {
     }
 
     try {
+      if (isQuotationRoute && pathname !== '/api/quotations') {
+        if (!quotationIdMatch) {
+          sendJson(response, 404, { error: 'Quotation route not found.' })
+          return
+        }
+
+        let quotationId
+        try {
+          quotationId = decodeURIComponent(quotationIdMatch[1])
+        } catch {
+          sendJson(response, 400, { error: 'Quotation ID is invalid.' })
+          return
+        }
+
+        if (request.method === 'DELETE') {
+          const deletedQuotation = await deleteQuotation(quotationId)
+          sendJson(response, 200, deletedQuotation)
+          return
+        }
+
+        if (request.method === 'PUT') {
+          const recordData = await readRequestBody(request)
+          const validationError = validateQuotation(recordData)
+          if (validationError) {
+            sendJson(response, 400, { error: validationError })
+            return
+          }
+          const updatedQuotation = await updateQuotation(quotationId, recordData)
+          sendJson(response, 200, updatedQuotation)
+          return
+        }
+
+        response.setHeader('Allow', 'PUT, DELETE')
+        sendJson(response, 405, { error: 'Method not allowed.' })
+        return
+      }
+
       if (request.method === 'GET') {
         const records = pathname === '/api/quotations'
           ? await listQuotations()

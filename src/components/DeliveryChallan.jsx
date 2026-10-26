@@ -1,6 +1,21 @@
 import { useEffect, useState } from 'react'
 
-const createEmptyItem = () => ({ description: '', quantity: '1' })
+const createEmptyItem = () => ({
+  description: '',
+  hsnCode: '',
+  productCode: '',
+  make: '',
+  quantity: '1',
+  rate: '0',
+})
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
 
 async function readApiResponse(response) {
   const responseBody = await response.text()
@@ -107,13 +122,35 @@ function DeliveryChallan({ onBack }) {
       customerName: String(formData.get('customerName') || '').trim(),
       email: String(formData.get('email') || '').trim(),
       phone: String(formData.get('phone') || '').trim(),
+      customerGstNumber: String(formData.get('customerGstNumber') || '').trim(),
+      customerPanNumber: String(formData.get('customerPanNumber') || '').trim(),
+      billingAddress: String(formData.get('billingAddress') || '').trim(),
       deliveryAddress: String(formData.get('deliveryAddress') || '').trim(),
       dispatchDate: String(formData.get('dispatchDate') || ''),
-      reference: String(formData.get('reference') || '').trim(),
+      invoiceNumber: String(formData.get('invoiceNumber') || '').trim(),
+      purchaseOrderNumber: String(formData.get('purchaseOrderNumber') || '').trim(),
+      purchaseOrderDate: String(formData.get('purchaseOrderDate') || ''),
+      paymentTerms: String(formData.get('paymentTerms') || '').trim(),
+      regionCode: String(formData.get('regionCode') || '').trim(),
+      numberOfPackages: String(formData.get('numberOfPackages') || '').trim(),
+      contactPerson: String(formData.get('contactPerson') || '').trim(),
       transporter: String(formData.get('transporter') || '').trim(),
+      dispatchThrough: String(formData.get('dispatchThrough') || '').trim(),
       vehicleNumber: String(formData.get('vehicleNumber') || '').trim(),
+      reference: String(formData.get('reference') || '').trim(),
       notes: String(formData.get('notes') || '').trim(),
-      items: challanItems,
+      items: items.map((item, index) => ({
+        ...challanItems[index],
+        hsnCode: item.hsnCode.trim(),
+        productCode: item.productCode.trim(),
+        make: item.make.trim(),
+        rate: Number(item.rate),
+      })),
+    }
+
+    if (challan.items.some((item) => !Number.isFinite(item.rate) || item.rate < 0)) {
+      setFormError('Enter a valid non-negative rate for each item.')
+      return
     }
 
     setIsSaving(true)
@@ -136,6 +173,10 @@ function DeliveryChallan({ onBack }) {
       setIsSaving(false)
     }
   }
+
+  const totalAmount = Math.round(items.reduce((sum, item) => (
+    sum + (Number(item.quantity) || 0) * (Number(item.rate) || 0)
+  ), 0) * 100) / 100
 
   return (
     <section className="quotation-page delivery-challan-page">
@@ -267,27 +308,67 @@ function DeliveryChallan({ onBack }) {
 
             <form className="quotation-form" onSubmit={handleSubmit}>
               <fieldset className="quotation-fieldset" disabled={isSaving}>
-                <legend>Delivery details</legend>
+                <legend>Challan, buyer, and delivery details</legend>
                 <div className="quotation-form-grid">
+                  <label className="quotation-field">
+                    <span>Delivery challan number</span>
+                    <input type="text" value="Generated when saved" readOnly />
+                  </label>
                   <label className="quotation-field">
                     <span>Customer name <b>*</b></span>
                     <input name="customerName" type="text" autoComplete="name" required />
                   </label>
                   <label className="quotation-field">
-                    <span>Email address</span>
-                    <input name="email" type="email" autoComplete="email" />
-                  </label>
-                  <label className="quotation-field">
-                    <span>Phone number</span>
-                    <input name="phone" type="tel" autoComplete="tel" />
+                    <span>Invoice number</span>
+                    <input name="invoiceNumber" type="text" />
                   </label>
                   <label className="quotation-field">
                     <span>Dispatch date <b>*</b></span>
                     <input name="dispatchDate" type="date" defaultValue={getLocalDateString()} required />
                   </label>
                   <label className="quotation-field">
-                    <span>Reference invoice / order</span>
-                    <input name="reference" type="text" />
+                    <span>Purchase order number</span>
+                    <input name="purchaseOrderNumber" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Purchase order date</span>
+                    <input name="purchaseOrderDate" type="date" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Terms of payment</span>
+                    <input name="paymentTerms" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Region / area code</span>
+                    <input name="regionCode" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Number of packages</span>
+                    <input name="numberOfPackages" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Email address</span>
+                    <input name="email" type="email" autoComplete="email" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Customer GST number</span>
+                    <input name="customerGstNumber" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Customer PAN number</span>
+                    <input name="customerPanNumber" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Phone number</span>
+                    <input name="phone" type="tel" autoComplete="tel" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Contact person</span>
+                    <input name="contactPerson" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Dispatch through</span>
+                    <input name="dispatchThrough" type="text" />
                   </label>
                   <label className="quotation-field">
                     <span>Transporter</span>
@@ -297,6 +378,14 @@ function DeliveryChallan({ onBack }) {
                     <span>Vehicle number</span>
                     <input name="vehicleNumber" type="text" />
                   </label>
+                  <label className="quotation-field">
+                    <span>Reference</span>
+                    <input name="reference" type="text" />
+                  </label>
+                  <label className="quotation-field quotation-field-full">
+                    <span>Bill to address</span>
+                    <textarea name="billingAddress" rows="2" autoComplete="street-address" />
+                  </label>
                   <label className="quotation-field quotation-field-full">
                     <span>Delivery address <b>*</b></span>
                     <textarea name="deliveryAddress" rows="2" autoComplete="street-address" required />
@@ -305,17 +394,41 @@ function DeliveryChallan({ onBack }) {
               </fieldset>
 
               <fieldset className="quotation-fieldset quotation-items-fieldset" disabled={isSaving}>
-                <legend>Delivered items</legend>
+                <legend>Goods dispatched</legend>
                 <div className="quotation-items">
                   {items.map((item, index) => (
-                    <div className="delivery-challan-item-row" key={index}>
-                      <label className="quotation-field">
-                        <span>Item description <b>*</b></span>
+                    <div className="quotation-item-row delivery-challan-goods-row" key={index}>
+                      <label className="quotation-field quotation-item-description">
+                        <span>Description of goods <b>*</b></span>
                         <input
                           type="text"
                           value={item.description}
                           onChange={(event) => updateItem(index, 'description', event.target.value)}
                           required
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>Product code</span>
+                        <input
+                          type="text"
+                          value={item.productCode}
+                          onChange={(event) => updateItem(index, 'productCode', event.target.value)}
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>HSN code</span>
+                        <input
+                          type="text"
+                          value={item.hsnCode}
+                          onChange={(event) => updateItem(index, 'hsnCode', event.target.value)}
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>Make</span>
+                        <input
+                          type="text"
+                          value={item.make}
+                          onChange={(event) => updateItem(index, 'make', event.target.value)}
                         />
                       </label>
                       <label className="quotation-field">
@@ -329,6 +442,20 @@ function DeliveryChallan({ onBack }) {
                           required
                         />
                       </label>
+                      <label className="quotation-field">
+                        <span>Rate (₹)</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={item.rate}
+                          onChange={(event) => updateItem(index, 'rate', event.target.value)}
+                        />
+                      </label>
+                      <span className="quotation-item-amount">
+                        <span>Amount</span>
+                        <strong>{formatCurrency((Number(item.quantity) || 0) * (Number(item.rate) || 0))}</strong>
+                      </span>
                       {items.length > 1 && (
                         <button
                           className="quotation-remove-item"
@@ -355,6 +482,12 @@ function DeliveryChallan({ onBack }) {
                 <span>Notes</span>
                 <textarea name="notes" rows="2" placeholder="Additional delivery details" disabled={isSaving} />
               </label>
+
+              <div className="quotation-total-breakdown">
+                <p className="quotation-grand-total">
+                  Total goods value <strong>{formatCurrency(totalAmount)}</strong>
+                </p>
+              </div>
 
               {formError && <p className="quotation-alert quotation-alert-error" role="alert">{formError}</p>}
 
