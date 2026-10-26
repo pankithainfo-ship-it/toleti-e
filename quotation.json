@@ -1,21 +1,38 @@
 [
   {
-    "id": "QT-1792742712623-7d869600",
-    "customerName": "ankitha",
-    "email": "pankithainfo@gmail.com",
-    "phone": "8977118018",
-    "address": "dilsukhnagar hyd",
-    "quotationDate": "2026-10-23",
-    "validUntil": "2026-10-24",
+    "id": "QT-1793004238805-dcc76b9d",
+    "customerName": "Mr. Venkata Arun",
+    "email": "venkata@gmail.com",
+    "phone": "9848945032",
+    "address": "HSIL Limited..,\nGlass Factory Road, Off Moti Nagar\nP.B 1930.Sanath Nagar P O\nHyderabad, T.S. 500018.\nGSTN.No.36AAACh7564H5ZB",
+    "quotationDate": "2022-04-26",
+    "validUntil": "2022-04-27",
+    "enquiryDate": "2022-01-31",
+    "enquiryReference": "",
+    "attention": "",
+    "region": "36 T.S",
+    "freight": "To-Pay",
+    "deliveryTerms": "8-10 Weeks",
+    "paymentTerms": "50% Advance, Balance against Delivery",
+    "validityTerms": "Delivery: 8-10 Weeks Payment: 50% Advance, Balance against Delivery, Validity: 30 days from the date of offer. P&F Charges: 2%.",
+    "freightTerms": "To-Pay",
+    "packingChargeRate": 2,
+    "packingCharge": 900,
+    "gstRate": 18,
+    "gstAmount": 8262,
+    "subtotal": 45000,
     "notes": "",
     "items": [
       {
-        "description": "dell",
-        "quantity": 2,
-        "unitPrice": 20000.02
+        "description": "R68G-NNK-RLN Regulators",
+        "hsnCode": "84213990",
+        "make": "IMI Norgren",
+        "quantity": 1,
+        "unitPrice": 45000,
+        "amount": 45000
       }
     ],
-    "total": 40000.04,
-    "createdAt": "2026-10-23T08:05:12.623Z"
+    "total": 54162,
+    "createdAt": "2026-10-26T08:43:58.806Z"
   }
 ]

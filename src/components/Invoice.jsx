@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 
-const createEmptyItem = () => ({ description: '', quantity: '1', unitPrice: '' })
+const createEmptyItem = () => ({
+  description: '',
+  hsnCode: '',
+  productCode: '',
+  make: '',
+  quantity: '1',
+  unitPrice: '',
+})
 
 async function readApiResponse(response) {
   const responseBody = await response.text()
@@ -36,6 +43,50 @@ function getLocalDateString() {
   return date.toISOString().slice(0, 10)
 }
 
+function numberToWords(number) {
+  const ones = [
+    'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen',
+  ]
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+  function underThousand(value) {
+    const words = []
+    if (value >= 100) {
+      words.push(ones[Math.floor(value / 100)], 'Hundred')
+      value %= 100
+    }
+    if (value >= 20) {
+      words.push(tens[Math.floor(value / 10)])
+      value %= 10
+    }
+    if (value > 0) words.push(ones[value])
+    return words.join(' ')
+  }
+
+  const amountInPaise = Math.round(number * 100)
+  if (!Number.isFinite(amountInPaise) || amountInPaise < 0 || amountInPaise > 99999999999) return ''
+  const amount = Math.floor(amountInPaise / 100)
+  const paise = amountInPaise % 100
+  if (amount === 0 && paise === 0) return 'Zero Rupees Only'
+
+  let remainder = amount
+  const words = []
+  const groups = [[10000000, 'Crore'], [100000, 'Lakh'], [1000, 'Thousand'], [1, '']]
+  groups.forEach(([size, label]) => {
+    const value = Math.floor(remainder / size)
+    if (value > 0) {
+      words.push(underThousand(value))
+      if (label) words.push(label)
+      remainder %= size
+    }
+  })
+
+  const rupeeWords = amount === 0 ? 'Zero' : words.join(' ')
+  return `${rupeeWords} Rupees${paise ? ` and ${underThousand(paise)} Paise` : ''} Only`
+}
+
 function Invoice({ onBack }) {
   const [invoices, setInvoices] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -44,6 +95,10 @@ function Invoice({ onBack }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [items, setItems] = useState([createEmptyItem()])
+  const [packingChargeRate, setPackingChargeRate] = useState('2')
+  const [cgstRate, setCgstRate] = useState('9')
+  const [sgstRate, setSgstRate] = useState('9')
+  const [courierCharges, setCourierCharges] = useState('')
   const [formError, setFormError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -103,6 +158,9 @@ function Invoice({ onBack }) {
     const dueDate = String(formData.get('dueDate') || '')
     const invoiceItems = items.map((item) => ({
       description: item.description.trim(),
+      hsnCode: item.hsnCode.trim(),
+      productCode: item.productCode.trim(),
+      make: item.make.trim(),
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
     }))
@@ -124,11 +182,42 @@ function Invoice({ onBack }) {
       customerName: String(formData.get('customerName') || '').trim(),
       email: String(formData.get('email') || '').trim(),
       phone: String(formData.get('phone') || '').trim(),
+      contactNumber: String(formData.get('contactNumber') || '').trim(),
       address: String(formData.get('address') || '').trim(),
+      deliveryAddress: String(formData.get('deliveryAddress') || '').trim(),
       invoiceDate,
       dueDate,
+      purchaseOrderNumber: String(formData.get('purchaseOrderNumber') || '').trim(),
+      purchaseOrderDate: String(formData.get('purchaseOrderDate') || ''),
+      purchaseOrderReceivedDate: String(formData.get('purchaseOrderReceivedDate') || ''),
+      freight: String(formData.get('freight') || '').trim(),
+      paymentTerms: String(formData.get('paymentTerms') || '').trim(),
+      modeOfDocuments: String(formData.get('modeOfDocuments') || '').trim(),
+      region: String(formData.get('region') || '').trim(),
+      numberOfPackages: String(formData.get('numberOfPackages') || '').trim(),
+      placeOfSupply: String(formData.get('placeOfSupply') || '').trim(),
+      wayBillNumber: String(formData.get('wayBillNumber') || '').trim(),
+      contactPerson: String(formData.get('contactPerson') || '').trim(),
+      dispatchThrough: String(formData.get('dispatchThrough') || '').trim(),
+      courierDwbNumber: String(formData.get('courierDwbNumber') || '').trim(),
+      gstNumber: String(formData.get('gstNumber') || '').trim(),
+      deliveryGstNumber: String(formData.get('deliveryGstNumber') || '').trim(),
+      packingChargeRate: Number(formData.get('packingChargeRate')),
+      cgstRate: Number(formData.get('cgstRate')),
+      sgstRate: Number(formData.get('sgstRate')),
+      courierCharges: Number(formData.get('courierCharges') || 0),
       notes: String(formData.get('notes') || '').trim(),
       items: invoiceItems,
+    }
+
+    if (
+      !Number.isFinite(invoice.packingChargeRate) || invoice.packingChargeRate < 0
+      || !Number.isFinite(invoice.cgstRate) || invoice.cgstRate < 0
+      || !Number.isFinite(invoice.sgstRate) || invoice.sgstRate < 0
+      || !Number.isFinite(invoice.courierCharges) || invoice.courierCharges < 0
+    ) {
+      setFormError('Enter valid non-negative P&F, tax rates, and courier charges.')
+      return
     }
 
     setIsSaving(true)
@@ -151,6 +240,15 @@ function Invoice({ onBack }) {
       setIsSaving(false)
     }
   }
+
+  const itemSubtotal = Math.round(items.reduce((sum, item) => (
+    sum + Math.round((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) * 100) / 100
+  ), 0) * 100) / 100
+  const packingCharge = Math.round(itemSubtotal * (Number(packingChargeRate) || 0)) / 100
+  const subtotal = itemSubtotal + packingCharge + (Number(courierCharges) || 0)
+  const cgstAmount = Math.round(subtotal * (Number(cgstRate) || 0)) / 100
+  const sgstAmount = Math.round(subtotal * (Number(sgstRate) || 0)) / 100
+  const grandTotal = Math.round((subtotal + cgstAmount + sgstAmount) * 100) / 100
 
   return (
     <section className="quotation-page invoice-page">
@@ -282,11 +380,35 @@ function Invoice({ onBack }) {
 
             <form className="quotation-form" onSubmit={handleSubmit}>
               <fieldset className="quotation-fieldset" disabled={isSaving}>
-                <legend>Customer details</legend>
+                <legend>Invoice and customer details</legend>
                 <div className="quotation-form-grid">
+                  <label className="quotation-field">
+                    <span>Invoice number</span>
+                    <input type="text" value="Generated when saved" readOnly />
+                  </label>
                   <label className="quotation-field">
                     <span>Customer name <b>*</b></span>
                     <input name="customerName" type="text" autoComplete="name" required />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Invoice date <b>*</b></span>
+                    <input name="invoiceDate" type="date" defaultValue={getLocalDateString()} required />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Purchase order number</span>
+                    <input name="purchaseOrderNumber" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Purchase order date</span>
+                    <input name="purchaseOrderDate" type="date" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>PO received date</span>
+                    <input name="purchaseOrderReceivedDate" type="date" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Due date</span>
+                    <input name="dueDate" type="date" />
                   </label>
                   <label className="quotation-field">
                     <span>Email address</span>
@@ -297,32 +419,104 @@ function Invoice({ onBack }) {
                     <input name="phone" type="tel" autoComplete="tel" />
                   </label>
                   <label className="quotation-field">
-                    <span>Invoice date <b>*</b></span>
-                    <input name="invoiceDate" type="date" defaultValue={getLocalDateString()} required />
+                    <span>Customer GST number</span>
+                    <input name="gstNumber" type="text" />
                   </label>
                   <label className="quotation-field">
-                    <span>Due date</span>
-                    <input name="dueDate" type="date" />
+                    <span>Freight</span>
+                    <input name="freight" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Terms of payment</span>
+                    <input name="paymentTerms" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Mode of documents</span>
+                    <input name="modeOfDocuments" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Region / area</span>
+                    <input name="region" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Number of packages</span>
+                    <input name="numberOfPackages" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Place of supply</span>
+                    <input name="placeOfSupply" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Way bill number</span>
+                    <input name="wayBillNumber" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Contact person</span>
+                    <input name="contactPerson" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Contact number</span>
+                    <input name="contactNumber" type="tel" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Dispatch through</span>
+                    <input name="dispatchThrough" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Courier DWB number</span>
+                    <input name="courierDwbNumber" type="text" />
                   </label>
                   <label className="quotation-field quotation-field-full">
-                    <span>Billing address</span>
+                    <span>Bill to address</span>
                     <textarea name="address" rows="2" autoComplete="street-address" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Delivery GST number</span>
+                    <input name="deliveryGstNumber" type="text" />
+                  </label>
+                  <label className="quotation-field quotation-field-full">
+                    <span>Delivery to address</span>
+                    <textarea name="deliveryAddress" rows="2" />
                   </label>
                 </div>
               </fieldset>
 
               <fieldset className="quotation-fieldset quotation-items-fieldset" disabled={isSaving}>
-                <legend>Invoice items</legend>
+                <legend>Goods and services</legend>
                 <div className="quotation-items">
                   {items.map((item, index) => (
-                    <div className="quotation-item-row" key={index}>
+                    <div className="quotation-item-row invoice-item-row" key={index}>
                       <label className="quotation-field quotation-item-description">
-                        <span>Description <b>*</b></span>
+                        <span>Description of goods <b>*</b></span>
                         <input
                           type="text"
                           value={item.description}
                           onChange={(event) => updateItem(index, 'description', event.target.value)}
                           required
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>HSN code</span>
+                        <input
+                          type="text"
+                          value={item.hsnCode}
+                          onChange={(event) => updateItem(index, 'hsnCode', event.target.value)}
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>Product code</span>
+                        <input
+                          type="text"
+                          value={item.productCode}
+                          onChange={(event) => updateItem(index, 'productCode', event.target.value)}
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>Make</span>
+                        <input
+                          type="text"
+                          value={item.make}
+                          onChange={(event) => updateItem(index, 'make', event.target.value)}
                         />
                       </label>
                       <label className="quotation-field quotation-item-quantity">
@@ -347,6 +541,10 @@ function Invoice({ onBack }) {
                           required
                         />
                       </label>
+                      <span className="quotation-item-amount">
+                        <span>Amount</span>
+                        <strong>{formatCurrency((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0))}</strong>
+                      </span>
                       {items.length > 1 && (
                         <button
                           className="quotation-remove-item"
@@ -369,16 +567,77 @@ function Invoice({ onBack }) {
                 </button>
               </fieldset>
 
+              <fieldset className="quotation-fieldset invoice-terms-fieldset" disabled={isSaving}>
+                <legend>Charges and taxes</legend>
+                <div className="quotation-form-grid">
+                  <label className="quotation-field">
+                    <span>P&amp;F charges (%)</span>
+                    <input
+                      name="packingChargeRate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={packingChargeRate}
+                      onChange={(event) => setPackingChargeRate(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Courier charges (₹)</span>
+                    <input
+                      name="courierCharges"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={courierCharges}
+                      onChange={(event) => setCourierCharges(event.target.value)}
+                    />
+                  </label>
+                  <label className="quotation-field">
+                    <span>CGST (%)</span>
+                    <input
+                      name="cgstRate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={cgstRate}
+                      onChange={(event) => setCgstRate(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="quotation-field">
+                    <span>SGST (%)</span>
+                    <input
+                      name="sgstRate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={sgstRate}
+                      onChange={(event) => setSgstRate(event.target.value)}
+                      required
+                    />
+                  </label>
+                </div>
+              </fieldset>
+
               <label className="quotation-field quotation-notes-field">
-                <span>Notes</span>
-                <textarea name="notes" rows="2" placeholder="Additional invoice details" disabled={isSaving} />
+                <span>Terms and conditions</span>
+                <textarea name="notes" rows="3" placeholder="Add invoice terms and conditions" disabled={isSaving} />
               </label>
 
-              <p className="quotation-form-total">
-                Estimated total <strong>{formatCurrency(items.reduce((sum, item) => (
-                  sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
-                ), 0))}</strong>
-              </p>
+              <div className="quotation-total-breakdown">
+                <p>Item total <strong>{formatCurrency(itemSubtotal)}</strong></p>
+                <p>P&amp;F charges <strong>{formatCurrency(packingCharge)}</strong></p>
+                <p>Courier charges <strong>{formatCurrency(Number(courierCharges) || 0)}</strong></p>
+                <p>Sub total <strong>{formatCurrency(subtotal)}</strong></p>
+                <p>CGST ({Number(cgstRate) || 0}%) <strong>{formatCurrency(cgstAmount)}</strong></p>
+                <p>SGST ({Number(sgstRate) || 0}%) <strong>{formatCurrency(sgstAmount)}</strong></p>
+                <p className="quotation-grand-total">Grand total <strong>{formatCurrency(grandTotal)}</strong></p>
+                <label className="quotation-field quotation-total-words">
+                  <span>Total amount in words</span>
+                  <input type="text" value={numberToWords(grandTotal)} readOnly />
+                </label>
+              </div>
 
               {formError && <p className="quotation-alert quotation-alert-error" role="alert">{formError}</p>}
 

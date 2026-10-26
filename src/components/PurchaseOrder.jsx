@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 
-const createEmptyItem = () => ({ description: '', quantity: '1', unitPrice: '' })
+const createEmptyItem = () => ({
+  description: '',
+  hsnCode: '',
+  productCode: '',
+  quantity: '1',
+  unitPrice: '',
+})
 
 async function readApiResponse(response) {
   const responseBody = await response.text()
@@ -36,6 +42,50 @@ function getLocalDateString() {
   return date.toISOString().slice(0, 10)
 }
 
+function numberToWords(number) {
+  const ones = [
+    'Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
+    'Seventeen', 'Eighteen', 'Nineteen',
+  ]
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+  function underThousand(value) {
+    const words = []
+    if (value >= 100) {
+      words.push(ones[Math.floor(value / 100)], 'Hundred')
+      value %= 100
+    }
+    if (value >= 20) {
+      words.push(tens[Math.floor(value / 10)])
+      value %= 10
+    }
+    if (value > 0) words.push(ones[value])
+    return words.join(' ')
+  }
+
+  const amountInPaise = Math.round(number * 100)
+  if (!Number.isFinite(amountInPaise) || amountInPaise < 0 || amountInPaise > 99999999999) return ''
+  const amount = Math.floor(amountInPaise / 100)
+  const paise = amountInPaise % 100
+  if (amount === 0 && paise === 0) return 'Zero Rupees Only'
+
+  let remainder = amount
+  const words = []
+  const groups = [[10000000, 'Crore'], [100000, 'Lakh'], [1000, 'Thousand'], [1, '']]
+  groups.forEach(([size, label]) => {
+    const value = Math.floor(remainder / size)
+    if (value > 0) {
+      words.push(underThousand(value))
+      if (label) words.push(label)
+      remainder %= size
+    }
+  })
+
+  const rupeeWords = amount === 0 ? 'Zero' : words.join(' ')
+  return `${rupeeWords} Rupees${paise ? ` and ${underThousand(paise)} Paise` : ''} Only`
+}
+
 function PurchaseOrder({ onBack }) {
   const [purchaseOrders, setPurchaseOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -44,6 +94,8 @@ function PurchaseOrder({ onBack }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [items, setItems] = useState([createEmptyItem()])
+  const [packingChargeRate, setPackingChargeRate] = useState('1')
+  const [gstRate, setGstRate] = useState('18')
   const [formError, setFormError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -103,6 +155,8 @@ function PurchaseOrder({ onBack }) {
     const expectedDelivery = String(formData.get('expectedDelivery') || '')
     const orderItems = items.map((item) => ({
       description: item.description.trim(),
+      hsnCode: item.hsnCode.trim(),
+      productCode: item.productCode.trim(),
       quantity: Number(item.quantity),
       unitPrice: Number(item.unitPrice),
     }))
@@ -127,8 +181,26 @@ function PurchaseOrder({ onBack }) {
       address: String(formData.get('address') || '').trim(),
       orderDate,
       expectedDelivery,
+      offerNumber: String(formData.get('offerNumber') || '').trim(),
+      offerDate: String(formData.get('offerDate') || ''),
+      dispatchMode: String(formData.get('dispatchMode') || '').trim(),
+      freightTerms: String(formData.get('freightTerms') || '').trim(),
+      paymentTerms: String(formData.get('paymentTerms') || '').trim(),
+      discountTerms: String(formData.get('discountTerms') || '').trim(),
+      gstNumber: String(formData.get('gstNumber') || '').trim(),
+      panNumber: String(formData.get('panNumber') || '').trim(),
+      packingChargeRate: Number(formData.get('packingChargeRate')),
+      gstRate: Number(formData.get('gstRate')),
       notes: String(formData.get('notes') || '').trim(),
       items: orderItems,
+    }
+
+    if (
+      !Number.isFinite(purchaseOrder.packingChargeRate) || purchaseOrder.packingChargeRate < 0
+      || !Number.isFinite(purchaseOrder.gstRate) || purchaseOrder.gstRate < 0
+    ) {
+      setFormError('Enter valid non-negative P&F and GST rates.')
+      return
     }
 
     setIsSaving(true)
@@ -151,6 +223,14 @@ function PurchaseOrder({ onBack }) {
       setIsSaving(false)
     }
   }
+
+  const subtotal = Math.round(items.reduce((sum, item) => (
+    sum + Math.round((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) * 100) / 100
+  ), 0) * 100) / 100
+  const packingCharge = Math.round(subtotal * (Number(packingChargeRate) || 0)) / 100
+  const taxableAmount = subtotal + packingCharge
+  const gstAmount = Math.round(taxableAmount * (Number(gstRate) || 0)) / 100
+  const grandTotal = Math.round((taxableAmount + gstAmount) * 100) / 100
 
   return (
     <section className="quotation-page purchase-order-page">
@@ -280,11 +360,35 @@ function PurchaseOrder({ onBack }) {
 
             <form className="quotation-form" onSubmit={handleSubmit}>
               <fieldset className="quotation-fieldset" disabled={isSaving}>
-                <legend>Supplier details</legend>
+                <legend>Purchase order and supplier details</legend>
                 <div className="quotation-form-grid">
+                  <label className="quotation-field">
+                    <span>Purchase order number</span>
+                    <input type="text" value="Generated when saved" readOnly />
+                  </label>
                   <label className="quotation-field">
                     <span>Supplier name <b>*</b></span>
                     <input name="supplierName" type="text" autoComplete="organization" required />
+                  </label>
+                  <label className="quotation-field">
+                    <span>PO date <b>*</b></span>
+                    <input name="orderDate" type="date" defaultValue={getLocalDateString()} required />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Your offer number</span>
+                    <input name="offerNumber" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Offer date</span>
+                    <input name="offerDate" type="date" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Expected delivery</span>
+                    <input name="expectedDelivery" type="date" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Dispatch mode</span>
+                    <input name="dispatchMode" type="text" placeholder="e.g. By Road" />
                   </label>
                   <label className="quotation-field">
                     <span>Email address</span>
@@ -295,12 +399,12 @@ function PurchaseOrder({ onBack }) {
                     <input name="phone" type="tel" autoComplete="tel" />
                   </label>
                   <label className="quotation-field">
-                    <span>Order date <b>*</b></span>
-                    <input name="orderDate" type="date" defaultValue={getLocalDateString()} required />
+                    <span>GST number</span>
+                    <input name="gstNumber" type="text" />
                   </label>
                   <label className="quotation-field">
-                    <span>Expected delivery</span>
-                    <input name="expectedDelivery" type="date" />
+                    <span>PAN number</span>
+                    <input name="panNumber" type="text" />
                   </label>
                   <label className="quotation-field quotation-field-full">
                     <span>Supplier address</span>
@@ -310,17 +414,33 @@ function PurchaseOrder({ onBack }) {
               </fieldset>
 
               <fieldset className="quotation-fieldset quotation-items-fieldset" disabled={isSaving}>
-                <legend>Order items</legend>
+                <legend>Goods / services</legend>
                 <div className="quotation-items">
                   {items.map((item, index) => (
-                    <div className="quotation-item-row" key={index}>
+                    <div className="quotation-item-row purchase-order-item-row" key={index}>
                       <label className="quotation-field quotation-item-description">
-                        <span>Item description <b>*</b></span>
+                        <span>Description of goods <b>*</b></span>
                         <input
                           type="text"
                           value={item.description}
                           onChange={(event) => updateItem(index, 'description', event.target.value)}
                           required
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>HSN code</span>
+                        <input
+                          type="text"
+                          value={item.hsnCode}
+                          onChange={(event) => updateItem(index, 'hsnCode', event.target.value)}
+                        />
+                      </label>
+                      <label className="quotation-field">
+                        <span>Product code</span>
+                        <input
+                          type="text"
+                          value={item.productCode}
+                          onChange={(event) => updateItem(index, 'productCode', event.target.value)}
                         />
                       </label>
                       <label className="quotation-field quotation-item-quantity">
@@ -345,6 +465,10 @@ function PurchaseOrder({ onBack }) {
                           required
                         />
                       </label>
+                      <span className="quotation-item-amount">
+                        <span>Amount</span>
+                        <strong>{formatCurrency((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0))}</strong>
+                      </span>
                       {items.length > 1 && (
                         <button
                           className="quotation-remove-item"
@@ -367,16 +491,63 @@ function PurchaseOrder({ onBack }) {
                 </button>
               </fieldset>
 
+              <fieldset className="quotation-fieldset purchase-order-terms-fieldset" disabled={isSaving}>
+                <legend>Terms and charges</legend>
+                <div className="quotation-form-grid">
+                  <label className="quotation-field">
+                    <span>Freight terms</span>
+                    <input name="freightTerms" type="text" placeholder="e.g. Paid" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Payment terms</span>
+                    <input name="paymentTerms" type="text" placeholder="e.g. PDC" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Discount terms</span>
+                    <input name="discountTerms" type="text" />
+                  </label>
+                  <label className="quotation-field">
+                    <span>P&amp;F charges (%)</span>
+                    <input
+                      name="packingChargeRate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={packingChargeRate}
+                      onChange={(event) => setPackingChargeRate(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="quotation-field">
+                    <span>IGST (%)</span>
+                    <input
+                      name="gstRate"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={gstRate}
+                      onChange={(event) => setGstRate(event.target.value)}
+                      required
+                    />
+                  </label>
+                </div>
+              </fieldset>
+
               <label className="quotation-field quotation-notes-field">
                 <span>Notes</span>
                 <textarea name="notes" rows="2" placeholder="Additional order details" disabled={isSaving} />
               </label>
 
-              <p className="quotation-form-total">
-                Estimated total <strong>{formatCurrency(items.reduce((sum, item) => (
-                  sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
-                ), 0))}</strong>
-              </p>
+              <div className="quotation-total-breakdown">
+                <p>Sub total <strong>{formatCurrency(subtotal)}</strong></p>
+                <p>P&amp;F charges <strong>{formatCurrency(packingCharge)}</strong></p>
+                <p>IGST ({Number(gstRate) || 0}%) <strong>{formatCurrency(gstAmount)}</strong></p>
+                <p className="quotation-grand-total">Grand total <strong>{formatCurrency(grandTotal)}</strong></p>
+                <label className="quotation-field quotation-total-words">
+                  <span>Total amount in words</span>
+                  <input type="text" value={numberToWords(grandTotal)} readOnly />
+                </label>
+              </div>
 
               {formError && <p className="quotation-alert quotation-alert-error" role="alert">{formError}</p>}
 
