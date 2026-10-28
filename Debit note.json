@@ -1,1 +1,42 @@
-[]
+[
+  {
+    "id": "DN-1793175323329-7d3ec037",
+    "customerName": "Mr. Mudit Agarwal",
+    "email": "",
+    "phone": "",
+    "customerGstNumber": "GST NO: 09AAACI17716A1ZV",
+    "address": "Mr. Mudit Agarwal\nM/S. IMI NORGREN HERION PVT. LTD.\nA-62, Sector – 63, Gautam Budh Nagar,\nNoida, UP. 201 305",
+    "noteDate": "2019-12-05",
+    "purchaseOrderNumber": "TEP/TS/19009",
+    "purchaseOrderDate": "2019-08-05",
+    "invoiceNumber": "NI201904947",
+    "invoiceDate": "2019-10-30",
+    "creditNoteType": "REJECTED",
+    "creditNoteNumber": "",
+    "creditNoteDate": "",
+    "deliveryChallanNumber": "TEDC/TS/19002",
+    "deliveryChallanDate": "2019-11-30",
+    "reference": "",
+    "reason": "",
+    "packingChargeRate": 0,
+    "packingCharge": 0,
+    "gstRate": 18,
+    "gstAmount": 257.4,
+    "itemSubtotal": 1430,
+    "subtotal": 1430,
+    "comments": "Mr. Mudit",
+    "notes": "",
+    "items": [
+      {
+        "description": "QA/8050/23-D-Rear Clevis Mounting 50mm",
+        "hsnCode": "84219090",
+        "productCode": "12CK8-011",
+        "quantity": 2,
+        "amount": 715,
+        "total": 1430
+      }
+    ],
+    "total": 1687.4,
+    "createdAt": "2026-10-28T08:15:23.332Z"
+  }
+]

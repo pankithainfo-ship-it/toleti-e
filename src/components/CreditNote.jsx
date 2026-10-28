@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 
 const createEmptyItem = () => ({
   description: '',
@@ -93,11 +93,30 @@ function CreditNote({ onBack }) {
   const [refreshKey, setRefreshKey] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [editingCreditNote, setEditingCreditNote] = useState(null)
+  const [deletingCreditNoteId, setDeletingCreditNoteId] = useState('')
   const [items, setItems] = useState([createEmptyItem()])
   const [cgstRate, setCgstRate] = useState('9')
   const [sgstRate, setSgstRate] = useState('9')
+  const [formDefaults, setFormDefaults] = useState({})
+  const [expandedCreditNoteId, setExpandedCreditNoteId] = useState('')
+  const [printCreditNote, setPrintCreditNote] = useState(null)
   const [formError, setFormError] = useState('')
+  const [actionError, setActionError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+
+  useEffect(() => {
+    if (!printCreditNote) return undefined
+
+    const handleAfterPrint = () => setPrintCreditNote(null)
+    window.addEventListener('afterprint', handleAfterPrint)
+    const printFrame = window.requestAnimationFrame(() => window.print())
+
+    return () => {
+      window.cancelAnimationFrame(printFrame)
+      window.removeEventListener('afterprint', handleAfterPrint)
+    }
+  }, [printCreditNote])
 
   useEffect(() => {
     let isCurrent = true
@@ -201,21 +220,75 @@ function CreditNote({ onBack }) {
     setIsSaving(true)
 
     try {
-      const response = await fetch('/api/credit-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(creditNote),
-      })
+      const response = await fetch(
+        editingCreditNote
+          ? `/api/credit-notes/${encodeURIComponent(editingCreditNote.id)}`
+          : '/api/credit-notes',
+        {
+          method: editingCreditNote ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(creditNote),
+        },
+      )
       const savedCreditNote = await readApiResponse(response)
 
-      setCreditNotes((current) => [savedCreditNote, ...current])
+      setCreditNotes((current) => editingCreditNote
+        ? current.map((entry) => (entry.id === savedCreditNote.id ? savedCreditNote : entry))
+        : [savedCreditNote, ...current])
       setIsModalOpen(false)
+      setEditingCreditNote(null)
       setItems([createEmptyItem()])
-      setSuccessMessage(`Credit note ${savedCreditNote.id} was saved to Credit note.json.`)
+      setSuccessMessage(editingCreditNote
+        ? `Credit note ${savedCreditNote.id} was updated.`
+        : `Credit note ${savedCreditNote.id} was saved to Credit note.json.`)
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not save the credit note.')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  function openCreditNoteForm(note) {
+    setEditingCreditNote(note)
+    setFormDefaults(note)
+    setItems(Array.isArray(note.items) && note.items.length > 0
+      ? note.items.map((item) => ({
+        description: item.description || '',
+        productCode: item.productCode || '',
+        hsnCode: item.hsnCode || '',
+        quantity: String(item.quantity ?? '1'),
+        amount: String(item.amount ?? ''),
+      }))
+      : [createEmptyItem()])
+    setCgstRate(String(note.cgstRate ?? 9))
+    setSgstRate(String(note.sgstRate ?? 9))
+    setFormError('')
+    setActionError('')
+    setSuccessMessage('')
+    setIsModalOpen(true)
+  }
+
+  async function handleDelete(note) {
+    if (!window.confirm(`Delete credit note ${note.id} for ${note.customerName}? This cannot be undone.`)) {
+      return
+    }
+
+    setDeletingCreditNoteId(note.id)
+    setActionError('')
+    setSuccessMessage('')
+
+    try {
+      const response = await fetch(`/api/credit-notes/${encodeURIComponent(note.id)}`, {
+        method: 'DELETE',
+      })
+      await readApiResponse(response)
+      setCreditNotes((current) => current.filter((entry) => entry.id !== note.id))
+      setExpandedCreditNoteId((current) => (current === note.id ? '' : current))
+      setSuccessMessage(`Credit note ${note.id} was deleted.`)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not delete the credit note.')
+    } finally {
+      setDeletingCreditNoteId('')
     }
   }
 
@@ -244,7 +317,13 @@ function CreditNote({ onBack }) {
             className="quotation-create-button"
             type="button"
             onClick={() => {
+              setEditingCreditNote(null)
+              setFormDefaults({})
+              setItems([createEmptyItem()])
+              setCgstRate('9')
+              setSgstRate('9')
               setFormError('')
+              setActionError('')
               setSuccessMessage('')
               setIsModalOpen(true)
             }}
@@ -266,6 +345,7 @@ function CreditNote({ onBack }) {
           </button>
         </div>
       )}
+      {actionError && <p className="quotation-alert quotation-alert-error" role="alert">{actionError}</p>}
       {successMessage && <p className="quotation-alert quotation-alert-success" role="status">{successMessage}</p>}
 
       <div className="quotation-summary">
@@ -303,20 +383,125 @@ function CreditNote({ onBack }) {
                 <th scope="col">Date</th>
                 <th scope="col">Reference</th>
                 <th scope="col">Total</th>
+                <th scope="col">Details</th>
               </tr>
             </thead>
             <tbody>
               {creditNotes.map((note) => (
-                <tr key={note.id}>
-                  <td className="quotation-number">{note.id}</td>
-                  <td>
-                    <span className="quotation-customer">{note.customerName}</span>
-                    {note.email && <span className="quotation-customer-email">{note.email}</span>}
-                  </td>
-                  <td>{note.noteDate}</td>
-                  <td>{note.reference || '—'}</td>
-                  <td className="quotation-total">{formatCurrency(note.total)}</td>
-                </tr>
+                <Fragment key={note.id}>
+                  <tr>
+                    <td className="quotation-number">{note.id}</td>
+                    <td>
+                      <span className="quotation-customer">{note.customerName}</span>
+                      {note.email && <span className="quotation-customer-email">{note.email}</span>}
+                    </td>
+                    <td>{note.noteDate}</td>
+                    <td>{note.reference || '—'}</td>
+                    <td className="quotation-total">{formatCurrency(note.total)}</td>
+                    <td>
+                      <button
+                        className="quotation-details-toggle"
+                        type="button"
+                        aria-expanded={expandedCreditNoteId === note.id}
+                        aria-controls={`credit-note-details-${note.id}`}
+                        onClick={() => setExpandedCreditNoteId((current) => (
+                          current === note.id ? '' : note.id
+                        ))}
+                      >
+                        {expandedCreditNoteId === note.id ? 'Hide' : 'View'}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedCreditNoteId === note.id && (
+                    <tr key={`${note.id}-details`}>
+                      <td colSpan="6">
+                        <section
+                          className="quotation-record-details"
+                          id={`credit-note-details-${note.id}`}
+                        >
+                          <div className="quotation-record-toolbar">
+                            <span>Credit note details</span>
+                            <div className="quotation-record-actions">
+                              <button
+                                className="quotation-print-button"
+                                type="button"
+                                onClick={() => setPrintCreditNote(note)}
+                              >
+                                Print credit note
+                              </button>
+                              <button
+                                className="quotation-edit-button"
+                                type="button"
+                                onClick={() => openCreditNoteForm(note)}
+                                disabled={Boolean(deletingCreditNoteId)}
+                              >
+                                Edit credit note
+                              </button>
+                              <button
+                                className="quotation-delete-button"
+                                type="button"
+                                onClick={() => handleDelete(note)}
+                                disabled={Boolean(deletingCreditNoteId)}
+                              >
+                                {deletingCreditNoteId === note.id ? 'Deleting…' : 'Delete credit note'}
+                              </button>
+                            </div>
+                          </div>
+                          <dl className="quotation-record-grid">
+                            <div><dt>Email</dt><dd>{note.email || '—'}</dd></div>
+                            <div><dt>Phone</dt><dd>{note.phone || '—'}</dd></div>
+                            <div><dt>Customer GST number</dt><dd>{note.customerGstNumber || '—'}</dd></div>
+                            <div><dt>Billing address</dt><dd>{note.address || '—'}</dd></div>
+                            <div><dt>Purchase order number</dt><dd>{note.purchaseOrderNumber || '—'}</dd></div>
+                            <div><dt>Purchase order date</dt><dd>{note.purchaseOrderDate || '—'}</dd></div>
+                            <div><dt>Invoice number</dt><dd>{note.invoiceNumber || '—'}</dd></div>
+                            <div><dt>Invoice date</dt><dd>{note.invoiceDate || '—'}</dd></div>
+                            <div><dt>Credit note type</dt><dd>{note.creditNoteType || '—'}</dd></div>
+                            <div><dt>Delivery challan number</dt><dd>{note.deliveryChallanNumber || '—'}</dd></div>
+                            <div><dt>Delivery challan date</dt><dd>{note.deliveryChallanDate || '—'}</dd></div>
+                            <div><dt>Reference</dt><dd>{note.reference || '—'}</dd></div>
+                            <div><dt>Reason</dt><dd>{note.reason || '—'}</dd></div>
+                          </dl>
+                          <div className="quotation-record-items-wrap">
+                            <table className="quotation-record-items">
+                              <thead>
+                                <tr>
+                                  <th>Description</th>
+                                  <th>Product code</th>
+                                  <th>HSN</th>
+                                  <th>Qty</th>
+                                  <th>Unit amount</th>
+                                  <th>Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(note.items || []).map((item, index) => (
+                                  <tr key={`${note.id}-item-${index}`}>
+                                    <td>{item.description}</td>
+                                    <td>{item.productCode || '—'}</td>
+                                    <td>{item.hsnCode || '—'}</td>
+                                    <td>{item.quantity}</td>
+                                    <td>{formatCurrency(item.amount)}</td>
+                                    <td>{formatCurrency(item.total ?? item.quantity * item.amount)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="quotation-record-totals">
+                            <p>Subtotal <strong>{formatCurrency(note.subtotal ?? note.total)}</strong></p>
+                            <p>CGST ({note.cgstRate ?? 0}%) <strong>{formatCurrency(note.cgstAmount ?? 0)}</strong></p>
+                            <p>SGST ({note.sgstRate ?? 0}%) <strong>{formatCurrency(note.sgstAmount ?? 0)}</strong></p>
+                            <p className="quotation-grand-total">Total credit <strong>{formatCurrency(note.total)}</strong></p>
+                            <p className="quotation-record-amount-words">Total in words: {numberToWords(note.total)}</p>
+                          </div>
+                          {note.comments && <p className="quotation-record-notes"><strong>Comments:</strong> {note.comments}</p>}
+                          {note.notes && <p className="quotation-record-notes"><strong>Notes:</strong> {note.notes}</p>}
+                        </section>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -339,7 +524,9 @@ function CreditNote({ onBack }) {
             <header className="quotation-modal-header">
               <div>
                 <p className="dashboard-eyebrow">NEW DOCUMENT</p>
-                <h2 id="credit-note-modal-title">Create credit note</h2>
+                <h2 id="credit-note-modal-title">
+                  {editingCreditNote ? 'Edit credit note' : 'Create credit note'}
+                </h2>
               </div>
               <button
                 className="quotation-close-button"
@@ -358,67 +545,67 @@ function CreditNote({ onBack }) {
                 <div className="quotation-form-grid">
                   <label className="quotation-field">
                     <span>Credit note number</span>
-                    <input type="text" value="Generated when saved" readOnly />
+                    <input type="text" value={editingCreditNote?.id || 'Generated when saved'} readOnly />
                   </label>
                   <label className="quotation-field">
                     <span>Credit note date <b>*</b></span>
-                    <input name="noteDate" type="date" defaultValue={getLocalDateString()} required />
+                    <input name="noteDate" type="date" defaultValue={formDefaults.noteDate || getLocalDateString()} required />
                   </label>
                   <label className="quotation-field">
                     <span>Customer name <b>*</b></span>
-                    <input name="customerName" type="text" autoComplete="name" required />
+                    <input name="customerName" type="text" autoComplete="name" defaultValue={formDefaults.customerName || ''} required />
                   </label>
                   <label className="quotation-field">
                     <span>Customer GST number</span>
-                    <input name="customerGstNumber" type="text" />
+                    <input name="customerGstNumber" type="text" defaultValue={formDefaults.customerGstNumber || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Email address</span>
-                    <input name="email" type="email" autoComplete="email" />
+                    <input name="email" type="email" autoComplete="email" defaultValue={formDefaults.email || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Phone number</span>
-                    <input name="phone" type="tel" autoComplete="tel" />
+                    <input name="phone" type="tel" autoComplete="tel" defaultValue={formDefaults.phone || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Purchase order number</span>
-                    <input name="purchaseOrderNumber" type="text" />
+                    <input name="purchaseOrderNumber" type="text" defaultValue={formDefaults.purchaseOrderNumber || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Purchase order date</span>
-                    <input name="purchaseOrderDate" type="date" />
+                    <input name="purchaseOrderDate" type="date" defaultValue={formDefaults.purchaseOrderDate || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Invoice number</span>
-                    <input name="invoiceNumber" type="text" />
+                    <input name="invoiceNumber" type="text" defaultValue={formDefaults.invoiceNumber || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Invoice date</span>
-                    <input name="invoiceDate" type="date" />
+                    <input name="invoiceDate" type="date" defaultValue={formDefaults.invoiceDate || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Credit note type</span>
-                    <input name="creditNoteType" type="text" />
+                    <input name="creditNoteType" type="text" defaultValue={formDefaults.creditNoteType || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Delivery challan number</span>
-                    <input name="deliveryChallanNumber" type="text" />
+                    <input name="deliveryChallanNumber" type="text" defaultValue={formDefaults.deliveryChallanNumber || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Delivery challan date</span>
-                    <input name="deliveryChallanDate" type="date" />
+                    <input name="deliveryChallanDate" type="date" defaultValue={formDefaults.deliveryChallanDate || ''} />
                   </label>
                   <label className="quotation-field">
                     <span>Reference invoice / document</span>
-                    <input name="reference" type="text" />
+                    <input name="reference" type="text" defaultValue={formDefaults.reference || ''} />
                   </label>
                   <label className="quotation-field quotation-field-full">
                     <span>Billing address</span>
-                    <textarea name="address" rows="2" autoComplete="street-address" />
+                    <textarea name="address" rows="2" autoComplete="street-address" defaultValue={formDefaults.address || ''} />
                   </label>
                   <label className="quotation-field quotation-field-full">
                     <span>Reason for credit note</span>
-                    <input name="reason" type="text" placeholder="For example, returned goods or price adjustment" />
+                    <input name="reason" type="text" placeholder="For example, returned goods or price adjustment" defaultValue={formDefaults.reason || ''} />
                   </label>
                 </div>
               </fieldset>
@@ -530,14 +717,14 @@ function CreditNote({ onBack }) {
                   </label>
                   <label className="quotation-field quotation-field-full">
                     <span>Comments</span>
-                    <textarea name="comments" rows="2" />
+                    <textarea name="comments" rows="2" defaultValue={formDefaults.comments || ''} />
                   </label>
                 </div>
               </fieldset>
 
               <label className="quotation-field quotation-notes-field">
                 <span>Additional notes</span>
-                <textarea name="notes" rows="2" placeholder="Additional details" disabled={isSaving} />
+                <textarea name="notes" rows="2" placeholder="Additional details" defaultValue={formDefaults.notes || ''} disabled={isSaving} />
               </label>
 
               <div className="quotation-total-breakdown">
@@ -563,12 +750,107 @@ function CreditNote({ onBack }) {
                   Cancel
                 </button>
                 <button className="quotation-create-button" type="submit" disabled={isSaving}>
-                  {isSaving ? 'Saving…' : 'Save credit note'}
+                  {isSaving
+                    ? (editingCreditNote ? 'Updating…' : 'Saving…')
+                    : (editingCreditNote ? 'Update credit note' : 'Save credit note')}
                 </button>
               </footer>
             </form>
           </section>
         </div>
+      )}
+
+      {printCreditNote && (
+        <article className="quotation-print-document credit-note-print-document" id="credit-note-print-document">
+          <header className="quotation-print-company">
+            <div className="quotation-print-brand-mark">TE</div>
+            <div>
+              <h1>TOLETI ENTERPRISES</h1>
+              <p>1-1-287/20, Bapunagar, Street No. 4, Chikkadpally, Hyderabad-500020, Telangana</p>
+              <p>Cell No.: 9885480036 / 8121494837 | Mail: toletienterprises@gmail.com</p>
+              <p>GSTN No.: 36AKUPG7555J1ZG | IEC &amp; PAN No.: AKUPG7555J</p>
+            </div>
+          </header>
+
+          <h2 className="quotation-print-title">CREDIT NOTE</h2>
+
+          <section className="quotation-print-parties">
+            <div className="quotation-print-bill-to">
+              <strong>To:</strong>
+              <strong>{printCreditNote.customerName}</strong>
+              {printCreditNote.address && <p>{printCreditNote.address}</p>}
+              {printCreditNote.customerGstNumber && <p>GSTIN: {printCreditNote.customerGstNumber}</p>}
+              {printCreditNote.email && <p>Email: {printCreditNote.email}</p>}
+              {printCreditNote.phone && <p>Contact: {printCreditNote.phone}</p>}
+            </div>
+            <dl>
+              <div><dt>Credit note No.</dt><dd>{printCreditNote.id}</dd></div>
+              <div><dt>Date</dt><dd>{printCreditNote.noteDate || '—'}</dd></div>
+              <div><dt>Credit note type</dt><dd>{printCreditNote.creditNoteType || '—'}</dd></div>
+              <div><dt>Reference</dt><dd>{printCreditNote.reference || '—'}</dd></div>
+              <div><dt>Reason</dt><dd>{printCreditNote.reason || '—'}</dd></div>
+              <div><dt>Purchase order No.</dt><dd>{printCreditNote.purchaseOrderNumber || '—'}</dd></div>
+              <div><dt>Purchase order date</dt><dd>{printCreditNote.purchaseOrderDate || '—'}</dd></div>
+              <div><dt>Invoice No.</dt><dd>{printCreditNote.invoiceNumber || '—'}</dd></div>
+              <div><dt>Invoice date</dt><dd>{printCreditNote.invoiceDate || '—'}</dd></div>
+              <div><dt>Delivery challan No.</dt><dd>{printCreditNote.deliveryChallanNumber || '—'}</dd></div>
+              <div><dt>Delivery challan date</dt><dd>{printCreditNote.deliveryChallanDate || '—'}</dd></div>
+            </dl>
+          </section>
+
+          <table className="quotation-print-items credit-note-print-items">
+            <thead>
+              <tr>
+                <th>Sl. No.</th>
+                <th>Description</th>
+                <th>Product Code</th>
+                <th>HSN Code</th>
+                <th>Qty</th>
+                <th>Unit Amount</th>
+                <th>Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(printCreditNote.items || []).map((item, index) => (
+                <tr key={`${printCreditNote.id}-print-item-${index}`}>
+                  <td>{String(index + 1).padStart(2, '0')}</td>
+                  <td>{item.description}</td>
+                  <td>{item.productCode || '—'}</td>
+                  <td>{item.hsnCode || '—'}</td>
+                  <td>{item.quantity}</td>
+                  <td>{formatCurrency(item.amount)}</td>
+                  <td>{formatCurrency(item.total ?? item.quantity * item.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <section className="quotation-print-bottom credit-note-print-bottom">
+            <div className="quotation-print-terms">
+              <strong>Comments and notes:</strong>
+              <p>{printCreditNote.comments || '—'}</p>
+              {printCreditNote.notes && <p className="quotation-print-notes">{printCreditNote.notes}</p>}
+            </div>
+            <table className="quotation-print-totals">
+              <tbody>
+                <tr><th>Sub Total</th><td>{formatCurrency(printCreditNote.subtotal ?? printCreditNote.total)}</td></tr>
+                <tr><th>CGST @ {printCreditNote.cgstRate ?? 0}%</th><td>{formatCurrency(printCreditNote.cgstAmount ?? 0)}</td></tr>
+                <tr><th>SGST @ {printCreditNote.sgstRate ?? 0}%</th><td>{formatCurrency(printCreditNote.sgstAmount ?? 0)}</td></tr>
+                <tr className="quotation-print-grand-total"><th>Total Credit</th><td>{formatCurrency(printCreditNote.total)}</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <p className="quotation-print-words">
+            <strong>Total in words:</strong> {numberToWords(printCreditNote.total)}
+          </p>
+
+          <footer className="quotation-print-signature">
+            <strong>For Toleti Enterprises</strong>
+            <div className="quotation-print-signature-space" />
+            <strong>Authorized Signatory</strong>
+          </footer>
+        </article>
       )}
     </section>
   )

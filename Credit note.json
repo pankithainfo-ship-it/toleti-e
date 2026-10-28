@@ -1,1 +1,39 @@
-[]
+[
+  {
+    "id": "CN-1793175815261-2a69dae4",
+    "customerName": "Mr. Venkata Arun",
+    "email": "",
+    "phone": "",
+    "customerGstNumber": "36AAACH7564H1ZF",
+    "address": "M/S. HSIL Limited\n Glass Factory Road, Tukkapur.\n BHONGIRI - 508116.\n T.S\n GST.NO. : 36AAACH7564H1ZF",
+    "noteDate": "2019-08-16",
+    "purchaseOrderNumber": "4100083079",
+    "purchaseOrderDate": "2019-05-06",
+    "invoiceNumber": "TEI/19003",
+    "invoiceDate": "2019-07-13",
+    "creditNoteType": "Rejected",
+    "deliveryChallanNumber": "DC1002200293",
+    "deliveryChallanDate": "2019-07-22",
+    "reference": "",
+    "reason": "",
+    "cgstRate": 9,
+    "cgstAmount": 16020,
+    "sgstRate": 9,
+    "sgstAmount": 16020,
+    "subtotal": 178000,
+    "comments": "Mr. Venkata Arun.",
+    "notes": "",
+    "items": [
+      {
+        "description": "SPUSR/010G0059 C Spl Pnuematic Cylinder",
+        "productCode": "32CF1-005",
+        "hsnCode": "84123900",
+        "quantity": 2,
+        "amount": 89000,
+        "total": 178000
+      }
+    ],
+    "total": 210040,
+    "createdAt": "2026-10-28T08:23:35.262Z"
+  }
+]
