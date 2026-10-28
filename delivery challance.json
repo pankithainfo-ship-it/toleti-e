@@ -1,1 +1,39 @@
-[]
+[
+  {
+    "id": "DC-1793176328325-30e7231f",
+    "customerName": "Mr.Venkata Arun",
+    "email": "",
+    "phone": "",
+    "customerGstNumber": "36AAACH7564H1ZF",
+    "customerPanNumber": "AAACH7564H",
+    "billingAddress": "M/S.HSIL Limited\n Glass Factory Road.\n Off.Moti Nagar, P.B.No. 1930\n Sanath Nagar P.O\n Hyderabad - 500018. T.S",
+    "deliveryAddress": "M/S.HSIL Limited\n Glass Factory Road.\n Off.Moti Nagar, P.B.No. 1930\n Sanath Nagar P.O\n Hyderabad - 500018. T.S\n GST.NO:- 36AAACH7564H1ZF",
+    "dispatchDate": "2019-07-21",
+    "invoiceNumber": "TEDC/19001",
+    "purchaseOrderNumber": "4100083752",
+    "purchaseOrderDate": "2019-06-03",
+    "paymentTerms": "",
+    "regionCode": "Hyderabad/36",
+    "numberOfPackages": "01 Box",
+    "contactPerson": "Mr.Venkata Arun",
+    "reference": "",
+    "transporter": "",
+    "dispatchThrough": "By Hand",
+    "vehicleNumber": "",
+    "notes": "",
+    "items": [
+      {
+        "description": "SPUSR/010G0059C. Special Pneumatic Cylinder  Make N",
+        "hsnCode": "84123900",
+        "productCode": "12CH1-048",
+        "make": "Norgren.",
+        "quantity": 2,
+        "rate": 0,
+        "amount": 0
+      }
+    ],
+    "totalQuantity": 2,
+    "totalAmount": 0,
+    "createdAt": "2026-10-28T08:32:08.326Z"
+  }
+]

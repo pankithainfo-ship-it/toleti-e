@@ -1879,11 +1879,26 @@ a:focus-visible {
   }
 
   #quotation-print-document,
-  #quotation-print-document * {
+  #quotation-print-document *,
+  #invoice-print-document,
+  #invoice-print-document *,
+  #purchase-order-print-document,
+  #purchase-order-print-document *,
+  #debit-note-print-document,
+  #debit-note-print-document *,
+  #delivery-challan-print-document,
+  #delivery-challan-print-document *,
+  #credit-note-print-document,
+  #credit-note-print-document * {
     visibility: visible !important;
   }
 
-  #quotation-print-document {
+  #quotation-print-document,
+  #invoice-print-document,
+  #purchase-order-print-document,
+  #debit-note-print-document,
+  #delivery-challan-print-document,
+  #credit-note-print-document {
     position: fixed;
     inset: 0 auto auto 0;
     z-index: 99999;
@@ -2033,6 +2048,140 @@ a:focus-visible {
 
   .quotation-print-items td:nth-child(6),
   .quotation-print-items td:nth-child(7) {
+    text-align: right;
+  }
+
+  .invoice-print-delivery {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1mm 3mm;
+    margin-top: 3mm;
+    padding: 2mm 3mm;
+    border: 0.35mm solid #111;
+    break-inside: avoid;
+  }
+
+  .invoice-print-delivery p {
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  .invoice-print-items th:nth-child(1) { width: 6%; }
+  .invoice-print-items th:nth-child(2) { width: 26%; }
+  .invoice-print-items th:nth-child(3) { width: 10%; }
+  .invoice-print-items th:nth-child(4) { width: 12%; }
+  .invoice-print-items th:nth-child(5) { width: 11%; }
+  .invoice-print-items th:nth-child(6) { width: 6%; }
+  .invoice-print-items th:nth-child(7) { width: 13%; }
+  .invoice-print-items th:nth-child(8) { width: 16%; }
+
+  .invoice-print-items td:nth-child(1),
+  .invoice-print-items td:nth-child(3),
+  .invoice-print-items td:nth-child(4),
+  .invoice-print-items td:nth-child(5),
+  .invoice-print-items td:nth-child(6) {
+    text-align: center;
+  }
+
+  .invoice-print-items td:nth-child(7),
+  .invoice-print-items td:nth-child(8) {
+    text-align: right;
+  }
+
+  .purchase-order-print-items th:nth-child(1) { width: 7%; }
+  .purchase-order-print-items th:nth-child(2) { width: 34%; }
+  .purchase-order-print-items th:nth-child(3) { width: 12%; }
+  .purchase-order-print-items th:nth-child(4) { width: 15%; }
+  .purchase-order-print-items th:nth-child(5) { width: 8%; }
+  .purchase-order-print-items th:nth-child(6) { width: 12%; }
+  .purchase-order-print-items th:nth-child(7) { width: 12%; }
+
+  .purchase-order-print-items td:nth-child(1),
+  .purchase-order-print-items td:nth-child(3),
+  .purchase-order-print-items td:nth-child(4),
+  .purchase-order-print-items td:nth-child(5) {
+    text-align: center;
+  }
+
+  .purchase-order-print-items td:nth-child(6),
+  .purchase-order-print-items td:nth-child(7) {
+    text-align: right;
+  }
+
+  .debit-note-print-items th:nth-child(1) { width: 7%; }
+  .debit-note-print-items th:nth-child(2) { width: 36%; }
+  .debit-note-print-items th:nth-child(3) { width: 12%; }
+  .debit-note-print-items th:nth-child(4) { width: 15%; }
+  .debit-note-print-items th:nth-child(5) { width: 8%; }
+  .debit-note-print-items th:nth-child(6) { width: 11%; }
+  .debit-note-print-items th:nth-child(7) { width: 11%; }
+
+  .debit-note-print-items td:nth-child(1),
+  .debit-note-print-items td:nth-child(3),
+  .debit-note-print-items td:nth-child(4),
+  .debit-note-print-items td:nth-child(5) {
+    text-align: center;
+  }
+
+  .debit-note-print-items td:nth-child(6),
+  .debit-note-print-items td:nth-child(7) {
+    text-align: right;
+  }
+
+  .delivery-challan-print-delivery {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 1mm 3mm;
+    margin-top: 3mm;
+    padding: 2mm 3mm;
+    border: 0.35mm solid #111;
+    break-inside: avoid;
+  }
+
+  .delivery-challan-print-delivery p {
+    margin: 0;
+    white-space: pre-line;
+  }
+
+  .delivery-challan-print-items th:nth-child(1) { width: 6%; }
+  .delivery-challan-print-items th:nth-child(2) { width: 25%; }
+  .delivery-challan-print-items th:nth-child(3) { width: 13%; }
+  .delivery-challan-print-items th:nth-child(4) { width: 11%; }
+  .delivery-challan-print-items th:nth-child(5) { width: 12%; }
+  .delivery-challan-print-items th:nth-child(6) { width: 7%; }
+  .delivery-challan-print-items th:nth-child(7) { width: 13%; }
+  .delivery-challan-print-items th:nth-child(8) { width: 13%; }
+
+  .delivery-challan-print-items td:nth-child(1),
+  .delivery-challan-print-items td:nth-child(3),
+  .delivery-challan-print-items td:nth-child(4),
+  .delivery-challan-print-items td:nth-child(5),
+  .delivery-challan-print-items td:nth-child(6) {
+    text-align: center;
+  }
+
+  .delivery-challan-print-items td:nth-child(7),
+  .delivery-challan-print-items td:nth-child(8) {
+    text-align: right;
+  }
+
+  .credit-note-print-items th:nth-child(1) { width: 7%; }
+  .credit-note-print-items th:nth-child(2) { width: 36%; }
+  .credit-note-print-items th:nth-child(3) { width: 15%; }
+  .credit-note-print-items th:nth-child(4) { width: 12%; }
+  .credit-note-print-items th:nth-child(5) { width: 8%; }
+  .credit-note-print-items th:nth-child(6) { width: 11%; }
+  .credit-note-print-items th:nth-child(7) { width: 11%; }
+
+  .credit-note-print-items td:nth-child(1),
+  .credit-note-print-items td:nth-child(3),
+  .credit-note-print-items td:nth-child(4),
+  .credit-note-print-items td:nth-child(5) {
+    text-align: center;
+  }
+
+  .credit-note-print-items td:nth-child(6),
+  .credit-note-print-items td:nth-child(7) {
     text-align: right;
   }
 

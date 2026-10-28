@@ -1,3 +1,51 @@
 [
-
+  {
+    "id": "INV-1793174722311-a8e210f9",
+    "customerName": "Mr. Venkata Arun",
+    "email": "",
+    "phone": "9848945032",
+    "contactNumber": "9848945032",
+    "address": "M/S. HSIL Limited.., (SPL Glass)\nGlass Factory Road.\nTukkapur, Bhongiri.\nYadadri Dist T.S – 508 116.",
+    "deliveryAddress": "M/S. HSIL Limited.., (SPL Glass)\nGlass Factory Road.\nTukkapur, Bhongiri.\nYadadri Dist T.S – 508 116",
+    "invoiceDate": "2022-05-02",
+    "dueDate": "",
+    "purchaseOrderNumber": "4100107327",
+    "purchaseOrderDate": "2022-03-23",
+    "purchaseOrderReceivedDate": "2022-03-25",
+    "freight": "Extra",
+    "paymentTerms": "",
+    "modeOfDocuments": "Enclosed in the Box",
+    "region": "TS / 36",
+    "numberOfPackages": "01 Box",
+    "placeOfSupply": "Bhongiri",
+    "wayBillNumber": "1414 6898 7295",
+    "contactPerson": "Mr. Venkata Arun",
+    "dispatchThrough": "Professional Courier",
+    "courierDwbNumber": "HYD80938912",
+    "gstNumber": "09AAACI17716A1ZV",
+    "deliveryGstNumber": "GST.NO:- 36AAACH7564H5ZB",
+    "packingChargeRate": 2,
+    "packingCharge": 1950,
+    "courierCharges": 1000,
+    "cgstRate": 9,
+    "cgstAmount": 9040.5,
+    "sgstRate": 9,
+    "sgstAmount": 9040.5,
+    "itemSubtotal": 97500,
+    "subtotal": 100450,
+    "notes": "1. Terms & Conditions as per our order Acknowledgement.\n2. Intrest on all overdue payments Shell be charged @ 22%per\nannum.\n3. All disputes subject to Secunderabad Jurisdiction Only.\n4. All Payments to be made only account payee Cheque/ DD in\nthe favor of “TOLETI ENTERPRISES” Indian Overseas\nBank, Hyderabad, Chikkadpally Branch.\n A/C.No. 067 802 000 002 192. IFSC : IOBA0000678",
+    "items": [
+      {
+        "description": "EX9561-A8100K, Valves  Make: (IMI Norgre",
+        "hsnCode": "84819090",
+        "productCode": "21MB2-005",
+        "make": "(IMI Norgren)",
+        "quantity": 5,
+        "unitPrice": 19500,
+        "amount": 97500
+      }
+    ],
+    "total": 118531,
+    "createdAt": "2026-10-28T08:05:22.312Z"
+  }
 ]

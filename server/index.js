@@ -603,8 +603,7 @@ async function deleteQuotation(id) {
   return saveOperation
 }
 
-async function savePurchaseOrder(value) {
-  const id = `PO-${Date.now()}-${randomUUID().slice(0, 8)}`
+function createPurchaseOrderRecord(value, id, createdAt) {
   const items = value.items.map((item) => ({
     description: item.description.trim(),
     hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
@@ -642,20 +641,72 @@ async function savePurchaseOrder(value) {
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
     total: Math.round((subtotal + packingCharge + gstAmount) * 100) / 100,
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
+  return purchaseOrder
+}
 
+async function writePurchaseOrders(purchaseOrders) {
+  const temporaryPath = `${purchaseOrderFilePath}.${randomUUID()}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(purchaseOrders, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
+  await rename(temporaryPath, purchaseOrderFilePath)
+}
+
+async function savePurchaseOrder(value) {
+  const id = `PO-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const purchaseOrder = createPurchaseOrderRecord(value, id, new Date().toISOString())
   const saveOperation = writeQueue.then(async () => {
     const purchaseOrders = await readPurchaseOrderFile()
-    const updatedPurchaseOrders = [purchaseOrder, ...purchaseOrders]
-    const temporaryPath = `${purchaseOrderFilePath}.${randomUUID()}.tmp`
-
-    await writeFile(temporaryPath, `${JSON.stringify(updatedPurchaseOrders, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    })
-    await rename(temporaryPath, purchaseOrderFilePath)
+    await writePurchaseOrders([purchaseOrder, ...purchaseOrders])
     return purchaseOrder
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function updatePurchaseOrder(id, value) {
+  const saveOperation = writeQueue.then(async () => {
+    const purchaseOrders = await readPurchaseOrderFile()
+    const purchaseOrderIndex = purchaseOrders.findIndex((order) => order.id === id)
+    if (purchaseOrderIndex === -1) {
+      const error = new Error('Purchase order not found.')
+      error.status = 404
+      throw error
+    }
+
+    const existingPurchaseOrder = purchaseOrders[purchaseOrderIndex]
+    const updatedPurchaseOrder = createPurchaseOrderRecord(
+      value,
+      existingPurchaseOrder.id,
+      existingPurchaseOrder.createdAt || new Date().toISOString(),
+    )
+    const updatedPurchaseOrders = [...purchaseOrders]
+    updatedPurchaseOrders[purchaseOrderIndex] = updatedPurchaseOrder
+    await writePurchaseOrders(updatedPurchaseOrders)
+    return updatedPurchaseOrder
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function deletePurchaseOrder(id) {
+  const saveOperation = writeQueue.then(async () => {
+    const purchaseOrders = await readPurchaseOrderFile()
+    const purchaseOrderIndex = purchaseOrders.findIndex((order) => order.id === id)
+    if (purchaseOrderIndex === -1) {
+      const error = new Error('Purchase order not found.')
+      error.status = 404
+      throw error
+    }
+
+    const [deletedPurchaseOrder] = purchaseOrders.splice(purchaseOrderIndex, 1)
+    await writePurchaseOrders(purchaseOrders)
+    return deletedPurchaseOrder
   })
 
   writeQueue = saveOperation.then(() => undefined, () => undefined)
@@ -667,8 +718,7 @@ async function listQuotations() {
   return readQuotationFile()
 }
 
-async function saveInvoice(value) {
-  const id = `INV-${Date.now()}-${randomUUID().slice(0, 8)}`
+function createInvoiceRecord(value, id, createdAt) {
   const items = value.items.map((item) => ({
     description: item.description.trim(),
     hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
@@ -724,20 +774,72 @@ async function saveInvoice(value) {
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
     total: Math.round((subtotal + cgstAmount + sgstAmount) * 100) / 100,
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
+  return invoice
+}
 
+async function writeInvoices(invoices) {
+  const temporaryPath = `${invoiceFilePath}.${randomUUID()}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(invoices, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
+  await rename(temporaryPath, invoiceFilePath)
+}
+
+async function saveInvoice(value) {
+  const id = `INV-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const invoice = createInvoiceRecord(value, id, new Date().toISOString())
   const saveOperation = writeQueue.then(async () => {
     const invoices = await readInvoiceFile()
-    const updatedInvoices = [invoice, ...invoices]
-    const temporaryPath = `${invoiceFilePath}.${randomUUID()}.tmp`
-
-    await writeFile(temporaryPath, `${JSON.stringify(updatedInvoices, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    })
-    await rename(temporaryPath, invoiceFilePath)
+    await writeInvoices([invoice, ...invoices])
     return invoice
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function updateInvoice(id, value) {
+  const saveOperation = writeQueue.then(async () => {
+    const invoices = await readInvoiceFile()
+    const invoiceIndex = invoices.findIndex((invoice) => invoice.id === id)
+    if (invoiceIndex === -1) {
+      const error = new Error('Invoice not found.')
+      error.status = 404
+      throw error
+    }
+
+    const existingInvoice = invoices[invoiceIndex]
+    const updatedInvoice = createInvoiceRecord(
+      value,
+      existingInvoice.id,
+      existingInvoice.createdAt || new Date().toISOString(),
+    )
+    const updatedInvoices = [...invoices]
+    updatedInvoices[invoiceIndex] = updatedInvoice
+    await writeInvoices(updatedInvoices)
+    return updatedInvoice
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function deleteInvoice(id) {
+  const saveOperation = writeQueue.then(async () => {
+    const invoices = await readInvoiceFile()
+    const invoiceIndex = invoices.findIndex((invoice) => invoice.id === id)
+    if (invoiceIndex === -1) {
+      const error = new Error('Invoice not found.')
+      error.status = 404
+      throw error
+    }
+
+    const [deletedInvoice] = invoices.splice(invoiceIndex, 1)
+    await writeInvoices(invoices)
+    return deletedInvoice
   })
 
   writeQueue = saveOperation.then(() => undefined, () => undefined)
@@ -749,8 +851,7 @@ async function listPurchaseOrders() {
   return readPurchaseOrderFile()
 }
 
-async function saveDebitNote(value) {
-  const id = `DN-${Date.now()}-${randomUUID().slice(0, 8)}`
+function createDebitNoteRecord(value, id, createdAt) {
   const items = value.items.map((item) => ({
     description: item.description.trim(),
     hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
@@ -794,19 +895,26 @@ async function saveDebitNote(value) {
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
     total: Math.round((subtotal + gstAmount) * 100) / 100,
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
+  return debitNote
+}
 
+async function writeDebitNotes(debitNotes) {
+  const temporaryPath = `${debitNoteFilePath}.${randomUUID()}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(debitNotes, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
+  await rename(temporaryPath, debitNoteFilePath)
+}
+
+async function saveDebitNote(value) {
+  const id = `DN-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const debitNote = createDebitNoteRecord(value, id, new Date().toISOString())
   const saveOperation = writeQueue.then(async () => {
     const debitNotes = await readDebitNoteFile()
-    const updatedDebitNotes = [debitNote, ...debitNotes]
-    const temporaryPath = `${debitNoteFilePath}.${randomUUID()}.tmp`
-
-    await writeFile(temporaryPath, `${JSON.stringify(updatedDebitNotes, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    })
-    await rename(temporaryPath, debitNoteFilePath)
+    await writeDebitNotes([debitNote, ...debitNotes])
     return debitNote
   })
 
@@ -814,8 +922,52 @@ async function saveDebitNote(value) {
   return saveOperation
 }
 
-async function saveCreditNote(value) {
-  const id = `CN-${Date.now()}-${randomUUID().slice(0, 8)}`
+async function updateDebitNote(id, value) {
+  const saveOperation = writeQueue.then(async () => {
+    const debitNotes = await readDebitNoteFile()
+    const debitNoteIndex = debitNotes.findIndex((note) => note.id === id)
+    if (debitNoteIndex === -1) {
+      const error = new Error('Debit note not found.')
+      error.status = 404
+      throw error
+    }
+
+    const existingDebitNote = debitNotes[debitNoteIndex]
+    const updatedDebitNote = createDebitNoteRecord(
+      value,
+      existingDebitNote.id,
+      existingDebitNote.createdAt || new Date().toISOString(),
+    )
+    const updatedDebitNotes = [...debitNotes]
+    updatedDebitNotes[debitNoteIndex] = updatedDebitNote
+    await writeDebitNotes(updatedDebitNotes)
+    return updatedDebitNote
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function deleteDebitNote(id) {
+  const saveOperation = writeQueue.then(async () => {
+    const debitNotes = await readDebitNoteFile()
+    const debitNoteIndex = debitNotes.findIndex((note) => note.id === id)
+    if (debitNoteIndex === -1) {
+      const error = new Error('Debit note not found.')
+      error.status = 404
+      throw error
+    }
+
+    const [deletedDebitNote] = debitNotes.splice(debitNoteIndex, 1)
+    await writeDebitNotes(debitNotes)
+    return deletedDebitNote
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+function createCreditNoteRecord(value, id, createdAt) {
   const items = value.items.map((item) => ({
     description: item.description.trim(),
     productCode: typeof item.productCode === 'string' ? item.productCode.trim() : '',
@@ -855,19 +1007,26 @@ async function saveCreditNote(value) {
     notes: typeof value.notes === 'string' ? value.notes.trim() : '',
     items,
     total: Math.round((subtotal + cgstAmount + sgstAmount) * 100) / 100,
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
+  return creditNote
+}
 
+async function writeCreditNotes(creditNotes) {
+  const temporaryPath = `${creditNoteFilePath}.${randomUUID()}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(creditNotes, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
+  await rename(temporaryPath, creditNoteFilePath)
+}
+
+async function saveCreditNote(value) {
+  const id = `CN-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const creditNote = createCreditNoteRecord(value, id, new Date().toISOString())
   const saveOperation = writeQueue.then(async () => {
     const creditNotes = await readCreditNoteFile()
-    const updatedCreditNotes = [creditNote, ...creditNotes]
-    const temporaryPath = `${creditNoteFilePath}.${randomUUID()}.tmp`
-
-    await writeFile(temporaryPath, `${JSON.stringify(updatedCreditNotes, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    })
-    await rename(temporaryPath, creditNoteFilePath)
+    await writeCreditNotes([creditNote, ...creditNotes])
     return creditNote
   })
 
@@ -875,8 +1034,52 @@ async function saveCreditNote(value) {
   return saveOperation
 }
 
-async function saveDeliveryChallan(value) {
-  const id = `DC-${Date.now()}-${randomUUID().slice(0, 8)}`
+async function updateCreditNote(id, value) {
+  const saveOperation = writeQueue.then(async () => {
+    const creditNotes = await readCreditNoteFile()
+    const creditNoteIndex = creditNotes.findIndex((note) => note.id === id)
+    if (creditNoteIndex === -1) {
+      const error = new Error('Credit note not found.')
+      error.status = 404
+      throw error
+    }
+
+    const existingCreditNote = creditNotes[creditNoteIndex]
+    const updatedCreditNote = createCreditNoteRecord(
+      value,
+      existingCreditNote.id,
+      existingCreditNote.createdAt || new Date().toISOString(),
+    )
+    const updatedCreditNotes = [...creditNotes]
+    updatedCreditNotes[creditNoteIndex] = updatedCreditNote
+    await writeCreditNotes(updatedCreditNotes)
+    return updatedCreditNote
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function deleteCreditNote(id) {
+  const saveOperation = writeQueue.then(async () => {
+    const creditNotes = await readCreditNoteFile()
+    const creditNoteIndex = creditNotes.findIndex((note) => note.id === id)
+    if (creditNoteIndex === -1) {
+      const error = new Error('Credit note not found.')
+      error.status = 404
+      throw error
+    }
+
+    const [deletedCreditNote] = creditNotes.splice(creditNoteIndex, 1)
+    await writeCreditNotes(creditNotes)
+    return deletedCreditNote
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+function createDeliveryChallanRecord(value, id, createdAt) {
   const items = value.items.map((item) => ({
     description: item.description.trim(),
     hsnCode: typeof item.hsnCode === 'string' ? item.hsnCode.trim() : '',
@@ -911,20 +1114,72 @@ async function saveDeliveryChallan(value) {
     items,
     totalQuantity: items.reduce((sum, item) => sum + item.quantity, 0),
     totalAmount: Math.round(items.reduce((sum, item) => sum + item.amount, 0) * 100) / 100,
-    createdAt: new Date().toISOString(),
+    createdAt,
   }
+  return challan
+}
 
+async function writeDeliveryChallans(challans) {
+  const temporaryPath = `${deliveryChallanFilePath}.${randomUUID()}.tmp`
+  await writeFile(temporaryPath, `${JSON.stringify(challans, null, 2)}\n`, {
+    encoding: 'utf8',
+    flag: 'wx',
+  })
+  await rename(temporaryPath, deliveryChallanFilePath)
+}
+
+async function saveDeliveryChallan(value) {
+  const id = `DC-${Date.now()}-${randomUUID().slice(0, 8)}`
+  const challan = createDeliveryChallanRecord(value, id, new Date().toISOString())
   const saveOperation = writeQueue.then(async () => {
     const challans = await readDeliveryChallanFile()
-    const updatedChallans = [challan, ...challans]
-    const temporaryPath = `${deliveryChallanFilePath}.${randomUUID()}.tmp`
-
-    await writeFile(temporaryPath, `${JSON.stringify(updatedChallans, null, 2)}\n`, {
-      encoding: 'utf8',
-      flag: 'wx',
-    })
-    await rename(temporaryPath, deliveryChallanFilePath)
+    await writeDeliveryChallans([challan, ...challans])
     return challan
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function updateDeliveryChallan(id, value) {
+  const saveOperation = writeQueue.then(async () => {
+    const challans = await readDeliveryChallanFile()
+    const challanIndex = challans.findIndex((entry) => entry.id === id)
+    if (challanIndex === -1) {
+      const error = new Error('Delivery challan not found.')
+      error.status = 404
+      throw error
+    }
+
+    const existingChallan = challans[challanIndex]
+    const updatedChallan = createDeliveryChallanRecord(
+      value,
+      existingChallan.id,
+      existingChallan.createdAt || new Date().toISOString(),
+    )
+    const updatedChallans = [...challans]
+    updatedChallans[challanIndex] = updatedChallan
+    await writeDeliveryChallans(updatedChallans)
+    return updatedChallan
+  })
+
+  writeQueue = saveOperation.then(() => undefined, () => undefined)
+  return saveOperation
+}
+
+async function deleteDeliveryChallan(id) {
+  const saveOperation = writeQueue.then(async () => {
+    const challans = await readDeliveryChallanFile()
+    const challanIndex = challans.findIndex((entry) => entry.id === id)
+    if (challanIndex === -1) {
+      const error = new Error('Delivery challan not found.')
+      error.status = 404
+      throw error
+    }
+
+    const [deletedChallan] = challans.splice(challanIndex, 1)
+    await writeDeliveryChallans(challans)
+    return deletedChallan
   })
 
   writeQueue = saveOperation.then(() => undefined, () => undefined)
@@ -956,14 +1211,24 @@ export function createApiServer() {
     const pathname = new URL(request.url || '/', 'http://localhost').pathname
     const isQuotationRoute = pathname === '/api/quotations' || pathname.startsWith('/api/quotations/')
     const quotationIdMatch = pathname.match(/^\/api\/quotations\/([^/]+)$/)
+    const purchaseOrderIdMatch = pathname.match(/^\/api\/purchase-orders\/([^/]+)$/)
+    const invoiceIdMatch = pathname.match(/^\/api\/invoices\/([^/]+)$/)
+    const debitNoteIdMatch = pathname.match(/^\/api\/debit-notes\/([^/]+)$/)
+    const creditNoteIdMatch = pathname.match(/^\/api\/credit-notes\/([^/]+)$/)
+    const deliveryChallanIdMatch = pathname.match(/^\/api\/delivery-challans\/([^/]+)$/)
 
     if (
       !isQuotationRoute
       && pathname !== '/api/purchase-orders'
+      && !purchaseOrderIdMatch
       && pathname !== '/api/invoices'
+      && !invoiceIdMatch
       && pathname !== '/api/debit-notes'
+      && !debitNoteIdMatch
       && pathname !== '/api/credit-notes'
+      && !creditNoteIdMatch
       && pathname !== '/api/delivery-challans'
+      && !deliveryChallanIdMatch
     ) {
       sendJson(response, 404, { error: 'API route not found.' })
       return
@@ -999,6 +1264,166 @@ export function createApiServer() {
           }
           const updatedQuotation = await updateQuotation(quotationId, recordData)
           sendJson(response, 200, updatedQuotation)
+          return
+        }
+
+        response.setHeader('Allow', 'PUT, DELETE')
+        sendJson(response, 405, { error: 'Method not allowed.' })
+        return
+      }
+
+      if (purchaseOrderIdMatch) {
+        let purchaseOrderId
+        try {
+          purchaseOrderId = decodeURIComponent(purchaseOrderIdMatch[1])
+        } catch {
+          sendJson(response, 400, { error: 'Purchase order ID is invalid.' })
+          return
+        }
+
+        if (request.method === 'DELETE') {
+          const deletedPurchaseOrder = await deletePurchaseOrder(purchaseOrderId)
+          sendJson(response, 200, deletedPurchaseOrder)
+          return
+        }
+
+        if (request.method === 'PUT') {
+          const recordData = await readRequestBody(request)
+          const validationError = validatePurchaseOrder(recordData)
+          if (validationError) {
+            sendJson(response, 400, { error: validationError })
+            return
+          }
+          const updatedPurchaseOrder = await updatePurchaseOrder(purchaseOrderId, recordData)
+          sendJson(response, 200, updatedPurchaseOrder)
+          return
+        }
+
+        response.setHeader('Allow', 'PUT, DELETE')
+        sendJson(response, 405, { error: 'Method not allowed.' })
+        return
+      }
+
+      if (invoiceIdMatch) {
+        let invoiceId
+        try {
+          invoiceId = decodeURIComponent(invoiceIdMatch[1])
+        } catch {
+          sendJson(response, 400, { error: 'Invoice ID is invalid.' })
+          return
+        }
+
+        if (request.method === 'DELETE') {
+          const deletedInvoice = await deleteInvoice(invoiceId)
+          sendJson(response, 200, deletedInvoice)
+          return
+        }
+
+        if (request.method === 'PUT') {
+          const recordData = await readRequestBody(request)
+          const validationError = validateInvoice(recordData)
+          if (validationError) {
+            sendJson(response, 400, { error: validationError })
+            return
+          }
+          const updatedInvoice = await updateInvoice(invoiceId, recordData)
+          sendJson(response, 200, updatedInvoice)
+          return
+        }
+
+        response.setHeader('Allow', 'PUT, DELETE')
+        sendJson(response, 405, { error: 'Method not allowed.' })
+        return
+      }
+
+      if (debitNoteIdMatch) {
+        let debitNoteId
+        try {
+          debitNoteId = decodeURIComponent(debitNoteIdMatch[1])
+        } catch {
+          sendJson(response, 400, { error: 'Debit note ID is invalid.' })
+          return
+        }
+
+        if (request.method === 'DELETE') {
+          const deletedDebitNote = await deleteDebitNote(debitNoteId)
+          sendJson(response, 200, deletedDebitNote)
+          return
+        }
+
+        if (request.method === 'PUT') {
+          const recordData = await readRequestBody(request)
+          const validationError = validateDebitNote(recordData)
+          if (validationError) {
+            sendJson(response, 400, { error: validationError })
+            return
+          }
+          const updatedDebitNote = await updateDebitNote(debitNoteId, recordData)
+          sendJson(response, 200, updatedDebitNote)
+          return
+        }
+
+        response.setHeader('Allow', 'PUT, DELETE')
+        sendJson(response, 405, { error: 'Method not allowed.' })
+        return
+      }
+
+      if (creditNoteIdMatch) {
+        let creditNoteId
+        try {
+          creditNoteId = decodeURIComponent(creditNoteIdMatch[1])
+        } catch {
+          sendJson(response, 400, { error: 'Credit note ID is invalid.' })
+          return
+        }
+
+        if (request.method === 'DELETE') {
+          const deletedCreditNote = await deleteCreditNote(creditNoteId)
+          sendJson(response, 200, deletedCreditNote)
+          return
+        }
+
+        if (request.method === 'PUT') {
+          const recordData = await readRequestBody(request)
+          const validationError = validateCreditNote(recordData)
+          if (validationError) {
+            sendJson(response, 400, { error: validationError })
+            return
+          }
+          const updatedCreditNote = await updateCreditNote(creditNoteId, recordData)
+          sendJson(response, 200, updatedCreditNote)
+          return
+        }
+
+        response.setHeader('Allow', 'PUT, DELETE')
+        sendJson(response, 405, { error: 'Method not allowed.' })
+        return
+      }
+
+      if (deliveryChallanIdMatch) {
+        let deliveryChallanId
+        try {
+          deliveryChallanId = decodeURIComponent(deliveryChallanIdMatch[1])
+        } catch {
+          sendJson(response, 400, { error: 'Delivery challan ID is invalid.' })
+          return
+        }
+
+        if (request.method === 'DELETE') {
+          const deletedChallan = await deleteDeliveryChallan(deliveryChallanId)
+          sendJson(response, 200, deletedChallan)
+          return
+        }
+
+        if (request.method === 'PUT') {
+          const recordData = await readRequestBody(request)
+          const validationError = validateDeliveryChallan(recordData)
+          if (validationError) {
+            sendJson(response, 400, { error: validationError })
+            return
+          }
+          const updatedChallan = await updateDeliveryChallan(deliveryChallanId, recordData)
+          sendJson(response, 200, updatedChallan)
           return
         }
 
