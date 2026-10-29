@@ -8,6 +8,17 @@ import DebitNote from './components/DebitNote.jsx'
 import CreditNote from './components/CreditNote.jsx'
 import DeliveryChallan from './components/DeliveryChallan.jsx'
 
+const AUTH_SESSION_KEY = 'toleti-authenticated'
+
+const searchableDocumentTypes = [
+  { name: 'Quotations', endpoint: '/api/quotations' },
+  { name: 'Purchase Order', endpoint: '/api/purchase-orders' },
+  { name: 'Invoice', endpoint: '/api/invoices' },
+  { name: 'Debit Note', endpoint: '/api/debit-notes' },
+  { name: 'Credit Note', endpoint: '/api/credit-notes' },
+  { name: 'Delivery Challan', endpoint: '/api/delivery-challans' },
+]
+
 const services = [
   {
     name: 'Quotations',
@@ -41,11 +52,67 @@ const services = [
   },
 ]
 
+function getDocumentSearchValues(document) {
+  const dateValues = Object.entries(document)
+    .filter(([key, value]) => /date/i.test(key) && typeof value === 'string')
+    .flatMap(([, value]) => {
+      if (!value) return []
+      const values = [value]
+      const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      const localDate = value.match(/^(\d{2})[/-](\d{2})[/-](\d{4})$/)
+      if (isoDate) values.push(`${isoDate[3]}-${isoDate[2]}-${isoDate[1]}`)
+      if (localDate) values.push(`${localDate[3]}-${localDate[2]}-${localDate[1]}`)
+      return values
+    })
+
+  return [
+    document.id,
+    document.customerName,
+    document.supplierName,
+    document.phone,
+    ...dateValues,
+  ].filter((value) => typeof value === 'string' && value.trim())
+}
+
+function matchesDocumentSearch(document, query) {
+  const normalizedQuery = query.trim().toLowerCase()
+  if (!normalizedQuery) return false
+  const queryValues = [normalizedQuery]
+  const localDate = normalizedQuery.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/)
+  if (localDate) {
+    const [, day, month, year] = localDate
+    queryValues.push(
+      `${day.padStart(2, '0')}-${month.padStart(2, '0')}-${year}`,
+      `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`,
+    )
+  }
+
+  if (getDocumentSearchValues(document).some((value) => (
+    queryValues.some((queryValue) => value.toLowerCase().includes(queryValue))
+  ))) {
+    return true
+  }
+
+  const compactPhoneQuery = normalizedQuery.replace(/\D/g, '')
+  return /^[+\d().\s-]+$/.test(query.trim())
+    && compactPhoneQuery.length >= 4
+    && typeof document.phone === 'string'
+    && document.phone.replace(/\D/g, '').includes(compactPhoneQuery)
+}
+
 function App() {
   const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => sessionStorage.getItem(AUTH_SESSION_KEY) === 'true'
+      || localStorage.getItem(AUTH_SESSION_KEY) === 'true',
+  )
   const [activeService, setActiveService] = useState('Overview')
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchDocuments, setSearchDocuments] = useState([])
+  const [isSearchLoading, setIsSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
 
   function handleSubmit(event) {
     event.preventDefault()
@@ -61,10 +128,65 @@ function App() {
     setMessage('')
     setActiveService('Overview')
     setIsAuthenticated(true)
+    if (formData.get('remember')) {
+      sessionStorage.removeItem(AUTH_SESSION_KEY)
+      localStorage.setItem(AUTH_SESSION_KEY, 'true')
+    } else {
+      localStorage.removeItem(AUTH_SESSION_KEY)
+      sessionStorage.setItem(AUTH_SESSION_KEY, 'true')
+    }
+  }
+
+  function handleSignOut() {
+    sessionStorage.removeItem(AUTH_SESSION_KEY)
+    localStorage.removeItem(AUTH_SESSION_KEY)
+    setIsAuthenticated(false)
+  }
+
+  async function handleSearchToggle() {
+    if (isSearchOpen) {
+      setIsSearchOpen(false)
+      return
+    }
+
+    setIsSearchOpen(true)
+    setIsSearchLoading(true)
+    setSearchError('')
+
+    try {
+      const results = await Promise.all(searchableDocumentTypes.map(async (type) => {
+        const response = await fetch(type.endpoint)
+        const body = await response.text()
+        let documents
+
+        try {
+          documents = JSON.parse(body)
+        } catch {
+          throw new Error(`${type.name} returned an invalid response (HTTP ${response.status}).`)
+        }
+
+        if (!response.ok) {
+          throw new Error(documents.error || `${type.name} returned HTTP ${response.status}.`)
+        }
+        if (!Array.isArray(documents)) {
+          throw new Error(`${type.name} returned invalid document data.`)
+        }
+
+        return documents.map((document) => ({ ...document, documentType: type.name }))
+      }))
+      setSearchDocuments(results.flat())
+    } catch (error) {
+      setSearchError(error instanceof Error ? error.message : 'Could not load documents for search.')
+    } finally {
+      setIsSearchLoading(false)
+    }
   }
 
   if (isAuthenticated) {
     const selectedService = services.find((service) => service.name === activeService)
+    const searchResults = searchDocuments.filter((document) => (
+      matchesDocumentSearch(document, searchQuery)
+    ))
 
     return (
       <main className="dashboard-page">
@@ -73,16 +195,82 @@ function App() {
             <span className="dashboard-brand-mark" aria-hidden="true">T</span>
             <span>toleti<span className="dashboard-brand-dot">.</span></span>
           </a>
+          <button
+            className="dashboard-search-button"
+            type="button"
+            aria-expanded={isSearchOpen}
+            aria-controls="dashboard-search-panel"
+            onClick={handleSearchToggle}
+          >
+            <span aria-hidden="true">⌕</span>
+            Search documents
+          </button>
           <div className="dashboard-account">
             <div className="account-details">
               <span className="account-name">Administrator</span>
               <span className="account-email">{credentials.email}</span>
             </div>
-            <button className="sign-out-button" type="button" onClick={() => setIsAuthenticated(false)}>
+            <button className="sign-out-button" type="button" onClick={handleSignOut}>
               Sign out
             </button>
           </div>
         </header>
+
+        {isSearchOpen && (
+          <section className="dashboard-search-panel" id="dashboard-search-panel" aria-label="Search documents">
+            <label htmlFor="dashboard-search-input">Search by name, phone, date, quotation or order number</label>
+            <input
+              id="dashboard-search-input"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Enter a name, phone number, date, or document number"
+              autoFocus
+            />
+            {isSearchLoading ? (
+              <p className="dashboard-search-status" role="status">Loading documents…</p>
+            ) : searchError ? (
+              <p className="dashboard-search-error" role="alert">{searchError}</p>
+            ) : searchQuery.trim() ? (
+              searchResults.length ? (
+                <>
+                  <p className="dashboard-search-status" role="status">
+                    {searchResults.length} matching {searchResults.length === 1 ? 'document' : 'documents'}
+                  </p>
+                  <ul className="dashboard-search-results">
+                    {searchResults.map((document) => (
+                      <li key={`${document.documentType}-${document.id}`}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveService(document.documentType)
+                            setIsSearchOpen(false)
+                          }}
+                        >
+                          <span>
+                            <strong>{document.customerName || document.supplierName || 'Unnamed record'}</strong>
+                            <small>{document.documentType} · {document.id}</small>
+                          </span>
+                          <span className="dashboard-search-result-meta">
+                            {document.phone || Object.entries(document).find(([key, value]) => (
+                              /date/i.test(key) && typeof value === 'string' && value
+                            ))?.[1] || ''}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <p className="dashboard-search-status" role="status">No matching documents found.</p>
+              )
+            ) : (
+              <p className="dashboard-search-status">
+                Search all document types by name, phone number, date, or document number.
+              </p>
+            )}
+          </section>
+        )}
 
         <div className="dashboard-layout">
           <aside className="dashboard-sidebar" aria-label="Dashboard navigation">
