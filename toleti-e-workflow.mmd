@@ -1,0 +1,45 @@
+flowchart TD
+    A([Open Toleti-e]) --> B{Already signed in?}
+
+    B -- No --> C[Enter email and password]
+    C --> D{Credentials match?}
+    D -- No --> E[Show sign-in error]
+    E --> C
+    D -- Yes --> F[Store signed-in flag in browser storage]
+
+    B -- Yes --> G[Open dashboard]
+    F --> G
+
+    G --> H{Choose an action}
+
+    H -- Open a document service --> I[Select document type]
+    I --> J[Load records from the matching API collection]
+    J --> K{Document action}
+    K -- Create --> L[Complete document form]
+    K -- Edit --> M[Update document details]
+    K -- Delete --> N[Request document deletion]
+    K -- Print --> O[Render print view and open browser print dialog]
+
+    L --> P[Send POST request]
+    M --> Q[Send PUT request with document ID]
+    N --> R[Send DELETE request with document ID]
+
+    P --> S[API validates document data]
+    Q --> S
+    R --> T[API updates the JSON collection file]
+    S --> U{Data valid?}
+    U -- No --> V[Return error to the application]
+    U -- Yes --> T
+    T --> W[Return result to the application]
+    W --> X[Refresh displayed records]
+    V --> K
+    X --> K
+
+    H -- Search documents --> Y[Request all six document collections]
+    Y --> Z[Filter records in the browser]
+    Z --> AA{Select a result?}
+    AA -- Yes --> I
+    AA -- No --> G
+
+    H -- Sign out --> AB[Clear browser sign-in flag]
+    AB --> AC([Return to sign-in screen])
