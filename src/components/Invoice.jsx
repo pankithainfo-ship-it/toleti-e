@@ -216,6 +216,7 @@ function Invoice({ onBack }) {
       numberOfPackages: String(formData.get('numberOfPackages') || '').trim(),
       placeOfSupply: String(formData.get('placeOfSupply') || '').trim(),
       wayBillNumber: String(formData.get('wayBillNumber') || '').trim(),
+      
       contactPerson: String(formData.get('contactPerson') || '').trim(),
       dispatchThrough: String(formData.get('dispatchThrough') || '').trim(),
       courierDwbNumber: String(formData.get('courierDwbNumber') || '').trim(),
@@ -488,15 +489,8 @@ function Invoice({ onBack }) {
                             <div><dt>Purchase order date</dt><dd>{savedInvoice.purchaseOrderDate || '—'}</dd></div>
                             <div><dt>PO received date</dt><dd>{savedInvoice.purchaseOrderReceivedDate || '—'}</dd></div>
                             <div><dt>Payment terms</dt><dd>{savedInvoice.paymentTerms || '—'}</dd></div>
-                            <div><dt>Freight</dt><dd>{savedInvoice.freight || '—'}</dd></div>
-                            <div><dt>Dispatch through</dt><dd>{savedInvoice.dispatchThrough || '—'}</dd></div>
-                            <div><dt>Courier DWB number</dt><dd>{savedInvoice.courierDwbNumber || '—'}</dd></div>
-                            <div><dt>Way bill number</dt><dd>{savedInvoice.wayBillNumber || '—'}</dd></div>
-                            <div><dt>Place of supply</dt><dd>{savedInvoice.placeOfSupply || '—'}</dd></div>
-                            <div><dt>Region / area</dt><dd>{savedInvoice.region || '—'}</dd></div>
-                            <div><dt>Mode of documents</dt><dd>{savedInvoice.modeOfDocuments || '—'}</dd></div>
-                            <div><dt>Number of packages</dt><dd>{savedInvoice.numberOfPackages || '—'}</dd></div>
                           </dl>
+
                           <div className="quotation-record-items-wrap">
                             <table className="quotation-record-items">
                               <thead>
@@ -889,6 +883,14 @@ function Invoice({ onBack }) {
               <div><dt>PO received</dt><dd>{printInvoice.purchaseOrderReceivedDate || '—'}</dd></div>
               <div><dt>Place of supply</dt><dd>{printInvoice.placeOfSupply || '—'}</dd></div>
               <div><dt>Way bill number</dt><dd>{printInvoice.wayBillNumber || '—'}</dd></div>
+              <div><dt>Freight</dt><dd>{printInvoice.freight || '—'}</dd></div>
+              <div><dt>Dispatch through</dt><dd>{printInvoice.dispatchThrough || '—'}</dd></div>
+              <div><dt>Courier DWB number</dt><dd>{printInvoice.courierDwbNumber || '—'}</dd></div>
+              <div><dt>Mode of documents</dt><dd>{printInvoice.modeOfDocuments || '—'}</dd></div>
+              <div><dt>Region / area</dt><dd>{printInvoice.region || '—'}</dd></div>
+              <div><dt>Number of packages</dt><dd>{printInvoice.numberOfPackages || '—'}</dd></div>
+              <div><dt>Contact person</dt><dd>{printInvoice.contactPerson || '—'}</dd></div>
+              <div><dt>Contact number</dt><dd>{printInvoice.contactNumber || '—'}</dd></div>
             </dl>
           </section>
 
@@ -931,17 +933,8 @@ function Invoice({ onBack }) {
 
           <section className="quotation-print-bottom invoice-print-bottom">
             <div className="quotation-print-terms">
-              <strong>Invoice details:</strong>
-              <p>Payment terms: {printInvoice.paymentTerms || '—'}</p>
-              <p>Freight: {printInvoice.freight || '—'}</p>
-              <p>Dispatch through: {printInvoice.dispatchThrough || '—'}</p>
-              <p>Courier DWB number: {printInvoice.courierDwbNumber || '—'}</p>
-              <p>Mode of documents: {printInvoice.modeOfDocuments || '—'}</p>
-              <p>Region / area: {printInvoice.region || '—'}</p>
-              <p>Number of packages: {printInvoice.numberOfPackages || '—'}</p>
-              <p>Contact person: {printInvoice.contactPerson || '—'}</p>
-              <p>Contact number: {printInvoice.contactNumber || '—'}</p>
-              {printInvoice.notes && <p className="quotation-print-notes">{printInvoice.notes}</p>}
+              <strong>Terms and conditions:</strong>
+              {printInvoice.notes ? <p className="quotation-print-notes">{printInvoice.notes}</p> : <p>—</p>}
             </div>
             <table className="quotation-print-totals">
               <tbody>
