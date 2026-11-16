@@ -204,6 +204,7 @@ function Invoice({ onBack }) {
       contactNumber: String(formData.get('contactNumber') || '').trim(),
       address: String(formData.get('address') || '').trim(),
       deliveryAddress: String(formData.get('deliveryAddress') || '').trim(),
+      deliveryGstNumber: String(formData.get('deliveryGstNumber') || '').trim(),
       invoiceDate,
       dueDate,
       purchaseOrderNumber: String(formData.get('purchaseOrderNumber') || '').trim(),
@@ -221,7 +222,6 @@ function Invoice({ onBack }) {
       dispatchThrough: String(formData.get('dispatchThrough') || '').trim(),
       courierDwbNumber: String(formData.get('courierDwbNumber') || '').trim(),
       gstNumber: String(formData.get('gstNumber') || '').trim(),
-      deliveryGstNumber: String(formData.get('deliveryGstNumber') || '').trim(),
       packingChargeRate: Number(formData.get('packingChargeRate')),
       cgstRate: Number(formData.get('cgstRate')),
       sgstRate: Number(formData.get('sgstRate')),
@@ -482,8 +482,8 @@ function Invoice({ onBack }) {
                             <div><dt>Contact person</dt><dd>{savedInvoice.contactPerson || '—'}</dd></div>
                             <div><dt>Contact number</dt><dd>{savedInvoice.contactNumber || '—'}</dd></div>
                             <div><dt>Billing address</dt><dd>{savedInvoice.address || '—'}</dd></div>
-                            <div><dt>Delivery address</dt><dd>{savedInvoice.deliveryAddress || '—'}</dd></div>
                             <div><dt>Customer GST number</dt><dd>{savedInvoice.gstNumber || '—'}</dd></div>
+                            <div><dt>Ship to address</dt><dd>{savedInvoice.deliveryAddress || '—'}</dd></div>
                             <div><dt>Delivery GST number</dt><dd>{savedInvoice.deliveryGstNumber || '—'}</dd></div>
                             <div><dt>Purchase order</dt><dd>{savedInvoice.purchaseOrderNumber || '—'}</dd></div>
                             <div><dt>Purchase order date</dt><dd>{savedInvoice.purchaseOrderDate || '—'}</dd></div>
@@ -662,13 +662,13 @@ function Invoice({ onBack }) {
                     <span>Bill to address</span>
                     <textarea name="address" rows="2" autoComplete="street-address" defaultValue={formDefaults.address || ''} />
                   </label>
-                  <label className="quotation-field">
-                    <span>Delivery GST number</span>
-                    <input name="deliveryGstNumber" type="text" defaultValue={formDefaults.deliveryGstNumber || ''} />
-                  </label>
                   <label className="quotation-field quotation-field-full">
-                    <span>Delivery to address</span>
+                    <span>Ship to address</span>
                     <textarea name="deliveryAddress" rows="2" defaultValue={formDefaults.deliveryAddress || ''} />
+                  </label>
+                  <label className="quotation-field">
+                    <span>Ship to GST number</span>
+                    <input name="deliveryGstNumber" type="text" defaultValue={formDefaults.deliveryGstNumber || ''} />
                   </label>
                 </div>
               </fieldset>
@@ -866,13 +866,20 @@ function Invoice({ onBack }) {
           <h2 className="quotation-print-title">TAX INVOICE</h2>
 
           <section className="quotation-print-parties">
-            <div className="quotation-print-bill-to">
-              <strong>Bill to:</strong>
-              <strong>{printInvoice.customerName}</strong>
-              {printInvoice.address && <p>{printInvoice.address}</p>}
-              {printInvoice.gstNumber && <p>GSTIN: {printInvoice.gstNumber}</p>}
-              {printInvoice.email && <p>Email: {printInvoice.email}</p>}
-              {printInvoice.phone && <p>Contact: {printInvoice.phone}</p>}
+            <div className="invoice-print-addresses">
+              <div className="quotation-print-bill-to">
+                <strong>Bill to:</strong>
+                <strong>{printInvoice.customerName}</strong>
+                {printInvoice.address && <p>{printInvoice.address}</p>}
+                {printInvoice.gstNumber && <p>GSTIN: {printInvoice.gstNumber}</p>}
+                {printInvoice.email && <p>Email: {printInvoice.email}</p>}
+                {printInvoice.phone && <p>Contact: {printInvoice.phone}</p>}
+              </div>
+              <div className="invoice-print-delivery">
+                <strong>Ship to:</strong>
+                <p>{printInvoice.deliveryAddress || '—'}</p>
+                {printInvoice.deliveryGstNumber && <p>GSTIN: {printInvoice.deliveryGstNumber}</p>}
+              </div>
             </div>
             <dl>
               <div><dt>Invoice No.</dt><dd>{printInvoice.id}</dd></div>
@@ -893,14 +900,6 @@ function Invoice({ onBack }) {
               <div><dt>Contact number</dt><dd>{printInvoice.contactNumber || '—'}</dd></div>
             </dl>
           </section>
-
-          {(printInvoice.deliveryAddress || printInvoice.deliveryGstNumber) && (
-            <section className="invoice-print-delivery">
-              <strong>Ship to:</strong>
-              {printInvoice.deliveryAddress && <p>{printInvoice.deliveryAddress}</p>}
-              {printInvoice.deliveryGstNumber && <p>GSTIN: {printInvoice.deliveryGstNumber}</p>}
-            </section>
-          )}
 
           <table className="quotation-print-items invoice-print-items">
             <thead>
