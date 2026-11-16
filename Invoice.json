@@ -25,14 +25,14 @@
     "gstNumber": "09AAACI17716A1ZV",
     "deliveryGstNumber": "GST.NO:- 36AAACH7564H5ZB",
     "packingChargeRate": 2,
-    "packingCharge": 1950,
+    "packingCharge": 3550,
     "courierCharges": 1000,
     "cgstRate": 9,
-    "cgstAmount": 9040.5,
+    "cgstAmount": 16384.5,
     "sgstRate": 9,
-    "sgstAmount": 9040.5,
-    "itemSubtotal": 97500,
-    "subtotal": 100450,
+    "sgstAmount": 16384.5,
+    "itemSubtotal": 177500,
+    "subtotal": 182050,
     "notes": "1. Terms & Conditions as per our order Acknowledgement.\n2. Intrest on all overdue payments Shell be charged @ 22%per\nannum.\n3. All disputes subject to Secunderabad Jurisdiction Only.\n4. All Payments to be made only account payee Cheque/ DD in\nthe favor of “TOLETI ENTERPRISES” Indian Overseas\nBank, Hyderabad, Chikkadpally Branch.\n A/C.No. 067 802 000 002 192. IFSC : IOBA0000678",
     "items": [
       {
@@ -43,9 +43,18 @@
         "quantity": 5,
         "unitPrice": 19500,
         "amount": 97500
+      },
+      {
+        "description": "laptops",
+        "hsnCode": "84819090",
+        "productCode": "",
+        "make": "",
+        "quantity": 8,
+        "unitPrice": 10000,
+        "amount": 80000
       }
     ],
-    "total": 118531,
+    "total": 214819,
     "createdAt": "2026-10-28T08:05:22.312Z"
   }
 ]
